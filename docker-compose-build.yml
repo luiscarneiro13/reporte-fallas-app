@@ -1,0 +1,82 @@
+# =========================================================================
+# Docker Compose de Construcción y Desarrollo - IronFlow App
+# =========================================================================
+
+services:
+  expo:
+    build:
+      context: .
+      dockerfile: Dockerfilebuild
+
+    container_name: ironflow-expo
+
+    # Modo host para permitir que los dispositivos de la LAN se conecten a Metro Packager
+    network_mode: host
+
+    environment:
+      NODE_ENV: development
+      EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
+      
+      # Optimización para detección de cambios de código en Linux/Docker
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "1000"
+      WATCHPACK_POLLING: "true"
+      WATCHPACK_POLLING_INTERVAL: "1000"
+      FAST_REFRESH: "true"
+
+      # Autenticación automática de EAS
+      EXPO_TOKEN: ${EXPO_TOKEN}
+
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+
+    stdin_open: true
+    tty: true
+    working_dir: /app
+
+    # Comando de inicio: detecta la IP local del host automáticamente
+    command: >
+      sh -c "
+      export REACT_NATIVE_PACKAGER_HOSTNAME=$(hostname -I | awk '{print $1}') &&
+      npm install &&
+      npx expo start --host lan --clear
+      "
+
+  build-aab:
+    build:
+      context: .
+      dockerfile: Dockerfilebuild
+
+    container_name: ironflow-build-aab
+
+    network_mode: host
+
+    environment:
+      NODE_ENV: production
+      EXPO_TOKEN: ${EXPO_TOKEN}
+
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+
+    working_dir: /app
+
+    command: >
+      sh -c "
+      npm install --include=dev &&
+      echo 'Ejecutando tests contra backend de produccion...' &&
+      NODE_ENV=test BUILD=true npm test || (echo 'TESTS FALLIDOS - Build abortado.' && exit 1) &&
+      echo 'Tests OK. Validando configuracion de build...' &&
+      npm run validate:build || (echo 'VALIDACION FALLIDA - Build abortado.' && exit 1) &&
+      echo 'Incrementando version (patch)...' &&
+      node scripts/bump-version.js patch &&
+      echo 'Compilando AAB de produccion...' &&
+      eas build --platform android --profile production --local
+      "
+
+    profiles:
+      - build
+
+volumes:
+  node_modules:

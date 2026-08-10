@@ -1,0 +1,46 @@
+# =========================================================================
+# Dockerfile Base para React Native & Expo (Node 20 / JDK 17)
+# Diseñado para subir a Docker Hub
+# =========================================================================
+
+FROM reactnativecommunity/react-native-android:v20.1
+
+# Metadata de la imagen (Labels) - Se reflejarán en GitHub Packages automáticamente
+LABEL org.opencontainers.image.title="React Native & Expo Base Image" \
+      org.opencontainers.image.description="Imagen base con Node 20, Java 17 y Android SDK configurados para compilar IronFlow con EAS CLI" \
+      org.opencontainers.image.authors="Luis Carneiro <carneiroluis2@gmail.com>" \
+      org.opencontainers.image.version="v1.0.0" \
+      com.tryironflow.changelog="Instalación inicial de Node 20, JDK 17, herramientas del compilador, yarn, expo-cli, y eas-cli."
+
+# Desactivar avisos interactivos durante la instalación de paquetes
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar herramientas útiles para el flujo de trabajo y compilación nativa
+RUN apt-get update && apt-get install -y \
+    git \
+    nano \
+    curl \
+    unzip \
+    wget \
+    make \
+    g++ \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar yarn de forma global y las herramientas de Expo / EAS CLI
+RUN npm install -g yarn expo-cli eas-cli @expo/ngrok
+
+# Limpiar la caché de npm para optimizar el peso final de la imagen
+RUN npm cache clean --force
+
+# Configuración inicial de Git para evitar problemas de directorios seguros con EAS/Expo
+RUN git config --global user.name "IronFlow Developer" && \
+    git config --global user.email "dev@ironflow.com" && \
+    git config --global --add safe.directory /app
+
+WORKDIR /app
+
+# Exponer los puertos estándar para Metro y Expo
+EXPOSE 8081 8082 19000 19001 19002 19006
+
+CMD ["bash"]

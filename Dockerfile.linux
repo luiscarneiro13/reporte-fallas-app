@@ -1,0 +1,18 @@
+FROM node:20-alpine
+
+# Instalar dependencias necesarias para Expo
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git
+
+WORKDIR /app
+
+# Instalar Expo globalmente
+RUN npm install -g expo @expo/ngrok
+
+# Exponer puertos necesarios
+EXPOSE 8081 8082 19000 19001 19002 19006
+
+CMD ["bash"]

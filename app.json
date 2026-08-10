@@ -1,0 +1,74 @@
+{
+  "expo": {
+    "name": "IronFlow",
+    "slug": "ironflow",
+    "version": "1.0.22",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "ironflow",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tryironflow.app",
+      "buildNumber": "22",
+      "associatedDomains": [
+        "applinks:tryironflow.com"
+      ]
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.tryironflow.app",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ],
+      "versionCode": 21,
+      "notification": {
+        "icon": "./assets/smallicon.png",
+        "color": "#1E50A0"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": {
+            "scheme": "https",
+            "host": "tryironflow.com",
+            "pathPrefix": "/equipment"
+          },
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/smallicon.png",
+          "color": "#1E50A0"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1366f100-a277-42c8-84dd-9701e6bc6060"
+      }
+    }
+  }
+}
