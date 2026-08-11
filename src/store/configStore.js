@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-const PRODUCTION_URL = 'https://tryironflow.com/api/v1';
-const LOCAL_URL = 'http://localhost:8090/api/v1';
+const PRODUCTION_URL = 'https://servicioscasmar.com/api/v1';
+const LOCAL_URL = 'http://localhost:8000/api/v1';
 
 const useConfigStore = create(
   persist(

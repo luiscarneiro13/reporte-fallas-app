@@ -14,14 +14,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { useTranslation, LANGUAGES } from '../i18n';
+import { useTranslation } from '../i18n';
 import { loginRequest } from '../api/auth';
 import useAuthStore from '../store/authStore';
 import { NotificationContext } from '../contexts/NotificationContext';
 import { APP_VERSION } from '../constants';
+import { COLORS } from '../constants/colors';
 
 export default function LoginScreen({ navigation }) {
-  const { t, locale, setLocale } = useTranslation();
+  const { t, locale } = useTranslation();
   const setAuth = useAuthStore((s) => s.setAuth);
   const setPendingRoute = useAuthStore((s) => s.setPendingRoute);
   const clearPendingRoute = useAuthStore((s) => s.clearPendingRoute);
@@ -79,7 +80,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <LinearGradient
-      colors={['#1E3A8A', '#0066CC', '#2563EB']}
+      colors={['#FFFFFF', '#FFFFFF']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.gradient}
@@ -106,7 +107,7 @@ export default function LoginScreen({ navigation }) {
             </View>
 
             {/* Title */}
-            <Text style={styles.title}>IronFlow</Text>
+            <Text style={styles.title}>Servicios Casmar</Text>
             <Text style={styles.subtitle}>{t('auth.system_access')}</Text>
 
             {/* Email */}
@@ -160,7 +161,7 @@ export default function LoginScreen({ navigation }) {
               disabled={loading}
             >
               <LinearGradient
-                colors={loading ? ['#718096', '#718096'] : ['#1E3A8A', '#0066CC']}
+                colors={loading ? ['#718096', '#718096'] : [COLORS.primary, COLORS.primaryLight]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.btnGradient}
@@ -173,26 +174,6 @@ export default function LoginScreen({ navigation }) {
                 }
               </LinearGradient>
             </TouchableOpacity>
-
-            {/* Language selector */}
-            <View style={styles.langRow}>
-              <Ionicons name="globe-outline" size={15} color="#a0aec0" style={{ marginRight: 8 }} />
-              {LANGUAGES.map((lang) => {
-                const active = locale === lang.code;
-                return (
-                  <TouchableOpacity
-                    key={lang.code}
-                    onPress={() => setLocale(lang.code)}
-                    style={[styles.langPill, active && styles.langPillActive]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.langPillText, active && styles.langPillTextActive]}>
-                      {lang.code.toUpperCase()}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
 
             <Text style={styles.versionText}>v{APP_VERSION}</Text>
 
@@ -288,34 +269,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
-  },
-  langRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-    gap: 6,
-  },
-  langPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    backgroundColor: 'transparent',
-  },
-  langPillActive: {
-    borderColor: '#1E3A8A',
-    backgroundColor: '#EBF4FF',
-  },
-  langPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#a0aec0',
-    letterSpacing: 0.5,
-  },
-  langPillTextActive: {
-    color: '#1E3A8A',
   },
   errorBox: {
     flexDirection: 'row',

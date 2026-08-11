@@ -14,6 +14,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '../../i18n';
 import ScreenContainer, { ScrollContent } from '../../components/ScreenContainer';
+import { COLORS } from '../../constants/colors';
 
 const MOCK_EMPLOYEES  = [{ value: '1', label: 'Alcalá Alejandro' }, { value: '2', label: 'García María' }, { value: '3', label: 'Torres Juan' }];
 const MOCK_EQUIPMENT  = [{ value: '1', label: 'Camioneta - CSM-VL-002 - A78AS1B' }, { value: '2', label: 'Excavator CAT 320' }, { value: '3', label: 'Crane Liebherr LTM' }];
@@ -85,7 +86,7 @@ export default function EditFaultScreen() {
 
   return (
     <ScreenContainer style={{ paddingTop: insets.top }}>
-      <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={styles.header}>
+      <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back-outline" size={24} color="#fff" />
@@ -121,7 +122,7 @@ export default function EditFaultScreen() {
             <Text style={styles.btnCancelText}>{t('actions.cancel')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btnSave} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-            <LinearGradient colors={['#1E3A8A', '#0066CC']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnGradient}>
+            <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnGradient}>
               <Ionicons name="save-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
               <Text style={styles.btnSaveText}>{t('actions.save')}</Text>
             </LinearGradient>

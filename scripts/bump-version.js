@@ -3,8 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const APP_JSON_PATH     = path.join(__dirname, '..', 'app.json');
-const PACKAGE_JSON_PATH = path.join(__dirname, '..', 'package.json');
+const APP_JSON_PATH      = path.join(__dirname, '..', 'app.json');
+const PACKAGE_JSON_PATH  = path.join(__dirname, '..', 'package.json');
+const CONSTANTS_JS_PATH  = path.join(__dirname, '..', 'src', 'constants', 'index.js');
 
 // Accept bump type from argument: patch (default), minor, major
 const BUMP_TYPE = process.argv[2] || 'patch';
@@ -46,6 +47,13 @@ packageJson.version                   = newVersion;
 
 fs.writeFileSync(APP_JSON_PATH,     JSON.stringify(appJson, null, 2) + '\n');
 fs.writeFileSync(PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2) + '\n');
+
+const constantsJs    = fs.readFileSync(CONSTANTS_JS_PATH, 'utf8');
+const updatedConstantsJs = constantsJs.replace(
+  /export const APP_VERSION\s*=\s*'[^']*';/,
+  `export const APP_VERSION        = '${newVersion}';`
+);
+fs.writeFileSync(CONSTANTS_JS_PATH, updatedConstantsJs);
 
 const border = '─'.repeat(44);
 console.log(`\n${border}`);

@@ -16,6 +16,7 @@ import { getEquipmentByUuid } from '../api/equipment';
 import { getFaults } from '../api/faults';
 import useAuthStore from '../store/authStore';
 import ScreenContainer, { ScrollContent } from '../components/ScreenContainer';
+import { COLORS } from '../constants/colors';
 
 const STATUS_CONFIG = {
   'Open':        { color: '#e53e3e', bg: '#FFF5F5' },
@@ -139,7 +140,7 @@ export default function EquipmentDetailScreen() {
   return (
     <SafeAreaProvider>
       <ScreenContainer>
-        <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+        <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back-outline" size={26} color="#fff" />
           </TouchableOpacity>

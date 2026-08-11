@@ -8,19 +8,19 @@ import {
 } from 'react-native';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
-import { useTranslation, LANGUAGES } from '../i18n';
+import { useTranslation } from '../i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import useAuthStore from '../store/authStore';
 import { logoutRequest } from '../api/auth';
-import { updateLanguageRequest } from '../api/user';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { syncAll } from '../services/syncService';
+import { COLORS } from '../constants/colors';
 
-const DARK_BLUE = '#1A3A6B';
-const MENU_BLUE = '#1E50A0';
-const ACTIVE_BLUE = '#2563C0';
+const SIDEBAR_BG = COLORS.sidebarBg;
+const ACTIVE_BLUE = COLORS.primary;
 const WHITE = '#FFFFFF';
+const TEXT_DARK = COLORS.dark;
 
 const MENU_OPERADOR = [
   { key: 'ReportFault',  labelKey: 'menu.report_fault',  icon: 'flag-outline',          screen: 'ReportFault' },
@@ -42,7 +42,7 @@ const MENU_DEV = [
 
 export default function Sidebar(props) {
   const { state, navigation } = props;
-  const { t, locale, setLocale } = useTranslation();
+  const { t } = useTranslation();
   const user  = useAuthStore((s) => s.user);
   const roles = useAuthStore((s) => s.roles);
   const clearAuth   = useAuthStore((s) => s.clearAuth);
@@ -85,14 +85,6 @@ export default function Sidebar(props) {
     });
   };
 
-  const handleLanguage = async (code) => {
-    if (code === locale) return;
-    setLocale(code);
-    try {
-      await updateLanguageRequest(code);
-    } catch (_) {}
-  };
-
   const handleLogout = async () => {
     try {
       await logoutRequest();
@@ -119,10 +111,10 @@ export default function Sidebar(props) {
               resizeMode="contain"
             />
           </TouchableOpacity>
-          <Ionicons name="wifi-outline" size={16} color="#fff" />
+          <Ionicons name="wifi-outline" size={16} color={TEXT_DARK} />
         </View>
         <View style={styles.headerInfo}>
-          <Text style={styles.brandName}>IronFlow</Text>
+          <Text style={styles.brandName}>Casmar</Text>
           {user && (
             <>
               <Text style={styles.userName} numberOfLines={1}>{user.name}</Text>
@@ -154,10 +146,10 @@ export default function Sidebar(props) {
               <Ionicons
                 name={item.icon}
                 size={20}
-                color={WHITE}
+                color={isActive ? WHITE : TEXT_DARK}
                 style={styles.menuIcon}
               />
-              <Text style={styles.menuLabel}>{t(item.labelKey)}</Text>
+              <Text style={[styles.menuLabel, { color: isActive ? WHITE : TEXT_DARK }]}>{t(item.labelKey)}</Text>
             </TouchableOpacity>
           );
         })}
@@ -174,44 +166,19 @@ export default function Sidebar(props) {
               <Ionicons
                 name={item.icon}
                 size={20}
-                color={WHITE}
+                color={isActive ? WHITE : TEXT_DARK}
                 style={styles.menuIcon}
               />
-              <Text style={styles.menuLabel}>{item.label}</Text>
+              <Text style={[styles.menuLabel, { color: isActive ? WHITE : TEXT_DARK }]}>{item.label}</Text>
             </TouchableOpacity>
           );
         })}
-
-        {/* Language selector */}
-        <View style={styles.langSection}>
-          <View style={styles.langHeader}>
-            <Ionicons name="globe-outline" size={15} color="rgba(255,255,255,0.55)" style={{ marginRight: 6 }} />
-            <Text style={styles.langTitle}>{t('common.language')}</Text>
-          </View>
-          <View style={styles.langRow}>
-            {LANGUAGES.map((lang) => {
-              const active = locale === lang.code;
-              return (
-                <TouchableOpacity
-                  key={lang.code}
-                  onPress={() => handleLanguage(lang.code)}
-                  style={[styles.langPill, active && styles.langPillActive]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.langPillText, active && styles.langPillTextActive]}>
-                    {lang.code.toUpperCase()}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
 
         {/* Sync status */}
         {pendingCount > 0 && (
           <View style={styles.syncSection}>
             <TouchableOpacity style={styles.syncBtn} onPress={() => syncAll()} disabled={isSyncing} activeOpacity={0.7}>
-              <Ionicons name={isSyncing ? 'sync-outline' : 'cloud-upload-outline'} size={16} color="#fff" />
+              <Ionicons name={isSyncing ? 'sync-outline' : 'cloud-upload-outline'} size={16} color={TEXT_DARK} />
               <Text style={styles.syncBtnText}>
                 {isSyncing ? 'Sincronizando...' : `${pendingCount} pendiente(s)`}
               </Text>
@@ -221,7 +188,7 @@ export default function Sidebar(props) {
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={20} color="rgba(255,255,255,0.7)" style={styles.menuIcon} />
+          <Ionicons name="log-out-outline" size={20} color="rgba(33,37,43,0.7)" style={styles.menuIcon} />
           <Text style={styles.logoutLabel}>{t('actions.logout') || 'Logout'}</Text>
         </TouchableOpacity>
       </DrawerContentScrollView>
@@ -232,7 +199,7 @@ export default function Sidebar(props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: MENU_BLUE,
+    backgroundColor: SIDEBAR_BG,
   },
   headerLeft: {
     alignItems: 'center',
@@ -241,7 +208,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: DARK_BLUE,
+    backgroundColor: SIDEBAR_BG,
     paddingTop: 25,
     paddingBottom: 20,
     paddingHorizontal: 16,
@@ -257,26 +224,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   brandName: {
-    color: WHITE,
+    color: TEXT_DARK,
     fontSize: 20,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
   userName: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(33,37,43,0.75)',
     fontSize: 13,
     marginTop: 2,
   },
   roleBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(33,37,43,0.12)',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginTop: 5,
   },
   roleBadgeText: {
-    color: WHITE,
+    color: TEXT_DARK,
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.3,
@@ -305,7 +272,7 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     flex: 1,
-    color: WHITE,
+    color: TEXT_DARK,
     fontSize: 15,
     fontWeight: '500',
     marginLeft: 8,
@@ -316,60 +283,17 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.15)',
+    borderTopColor: 'rgba(33,37,43,0.15)',
   },
   logoutLabel: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(33,37,43,0.7)',
     fontSize: 15,
     fontWeight: '500',
     marginLeft: 8,
   },
-  langSection: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 6,
-  },
-  langHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  langTitle: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  langRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  langPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  langPillActive: {
-    borderColor: WHITE,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  langPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 0.5,
-  },
-  langPillTextActive: {
-    color: WHITE,
-  },
   syncSection: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.15)',
+    borderTopColor: 'rgba(33,37,43,0.15)',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -384,13 +308,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     marginTop: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(33,37,43,0.08)',
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
   syncBtnText: {
-    color: '#fff',
+    color: TEXT_DARK,
     fontSize: 12,
     fontWeight: '600',
   },

@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "IronFlow",
-    "slug": "ironflow",
-    "version": "1.0.22",
+    "name": "Casmar",
+    "slug": "casmar",
+    "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "ironflow",
+    "scheme": "casmar",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tryironflow.app",
+      "bundleIdentifier": "com.casmar.app",
       "buildNumber": "22",
       "associatedDomains": [
-        "applinks:tryironflow.com"
+        "applinks:casmar.com"
       ]
     },
     "android": {
@@ -27,7 +27,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.tryironflow.app",
+      "package": "com.casmar.app",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "POST_NOTIFICATIONS"
@@ -43,7 +43,7 @@
           "autoVerify": true,
           "data": {
             "scheme": "https",
-            "host": "tryironflow.com",
+            "host": "casmar.com",
             "pathPrefix": "/equipment"
           },
           "category": [

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import ScreenContainer from '../components/ScreenContainer';
+import { COLORS } from '../constants/colors';
 
 export default function DevConfigScreen() {
   const navigation = useNavigation();
@@ -32,7 +33,7 @@ export default function DevConfigScreen() {
     <SafeAreaProvider>
       <ScreenContainer>
         {/* Header */}
-        <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+        <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity
             onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
             style={styles.menuBtn}
@@ -115,7 +116,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     gap: 8,
   },
-  envBtnActive: { backgroundColor: '#1E50A0' },
-  envBtnText: { fontSize: 14, fontWeight: '600', color: '#1E50A0' },
+  envBtnActive: { backgroundColor: COLORS.primary },
+  envBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
   envBtnTextActive: { color: '#fff' },
 });

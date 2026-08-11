@@ -23,6 +23,7 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { syncAll } from '../../services/syncService';
 import { getQueue } from '../../services/offlineQueue';
+import { COLORS } from '../../constants/colors';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const STATUS_CONFIG = {
@@ -259,7 +260,7 @@ function FilterSheet({ visible, filters, onChange, onApply, onClose, equipmentOp
             </TouchableOpacity>
             <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.85}>
               <LinearGradient
-                colors={['#1E3A8A', '#0066CC']}
+                colors={[COLORS.primary, COLORS.primaryLight]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={styles.applyBtnGradient}
               >
@@ -310,7 +311,7 @@ function FilterSheet({ visible, filters, onChange, onApply, onClose, equipmentOp
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={['#1E3A8A', '#0066CC']}
+                  colors={[COLORS.primary, COLORS.primaryLight]}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                   style={styles.applyBtnGradient}
                 >
@@ -512,7 +513,7 @@ export default function FaultSummaryScreen() {
     <SafeAreaProvider>
       <ScreenContainer backgroundColor="#F0F2F7" style={{ paddingTop: insets.top }}>
         {/* Header */}
-        <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={styles.header}>
+        <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
             style={styles.menuBtn}

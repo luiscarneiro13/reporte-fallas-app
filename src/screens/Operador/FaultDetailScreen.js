@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '../../i18n';
 import useAuthStore from '../../store/authStore';
 import ScreenContainer, { ScrollContent } from '../../components/ScreenContainer';
+import { COLORS } from '../../constants/colors';
 
 const STATUS_CONFIG = {
   'Open':        { color: '#e53e3e', bg: '#FFF5F5' },
@@ -59,7 +60,7 @@ export default function FaultDetailScreen() {
   return (
     <ScreenContainer backgroundColor="#F0F2F7" style={{ paddingTop: insets.top }}>
       {/* Header */}
-      <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={styles.header}>
+      <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
@@ -133,7 +134,7 @@ export default function FaultDetailScreen() {
               onPress={() => navigation.navigate('EditFault', { fault })}
               activeOpacity={0.85}
             >
-              <LinearGradient colors={['#1E3A8A', '#0066CC']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnGradient}>
+              <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnGradient}>
                 <Ionicons name="create-outline" size={17} color="#fff" style={{ marginRight: 5 }} />
                 <Text style={styles.btnGradientText}>{t('faults.edit_title')}</Text>
               </LinearGradient>

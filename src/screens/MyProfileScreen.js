@@ -16,6 +16,7 @@ import { logoutRequest, deletePushTokenRequest } from '../api/auth';
 import { useContext } from 'react';
 import { NotificationContext } from '../contexts/NotificationContext';
 import ScreenContainer, { ScrollContent } from '../components/ScreenContainer';
+import { COLORS } from '../constants/colors';
 
 export default function MyProfileScreen() {
   const { t } = useTranslation();
@@ -67,7 +68,7 @@ export default function MyProfileScreen() {
     <SafeAreaProvider>
       <ScreenContainer>
         {/* Header */}
-        <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+        <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity
             onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
             style={styles.menuBtn}

@@ -1,5 +1,5 @@
 # =========================================================================
-# Docker Compose de Construcción y Desarrollo - IronFlow App
+# Docker Compose de Construcción y Desarrollo - Casmar App
 # =========================================================================
 
 services:
@@ -8,7 +8,7 @@ services:
       context: .
       dockerfile: Dockerfilebuild
 
-    container_name: ironflow-expo
+    container_name: casmar-expo
 
     # Modo host para permitir que los dispositivos de la LAN se conecten a Metro Packager
     network_mode: host
@@ -48,7 +48,7 @@ services:
       context: .
       dockerfile: Dockerfilebuild
 
-    container_name: ironflow-build-aab
+    container_name: casmar-build-aab
 
     network_mode: host
 

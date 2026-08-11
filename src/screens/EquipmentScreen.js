@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from '../i18n';
 import { getEquipment } from '../api/equipment';
 import ScreenContainer from '../components/ScreenContainer';
+import { COLORS } from '../constants/colors';
 
 function EquipmentCard({ item, onPress }) {
   const name = item.placa || item.name || `#${item.uuid || item.id}`;
@@ -71,7 +72,7 @@ export default function EquipmentScreen() {
     return (
       <SafeAreaProvider>
         <ScreenContainer>
-          <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+          <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
             <TouchableOpacity
               onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
               style={styles.menuBtn}
@@ -93,7 +94,7 @@ export default function EquipmentScreen() {
     return (
       <SafeAreaProvider>
         <ScreenContainer>
-          <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+          <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
             <TouchableOpacity
               onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
               style={styles.menuBtn}
@@ -115,7 +116,7 @@ export default function EquipmentScreen() {
   return (
     <SafeAreaProvider>
       <ScreenContainer>
-        <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+        <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity
             onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
             style={styles.menuBtn}

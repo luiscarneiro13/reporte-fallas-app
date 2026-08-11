@@ -19,6 +19,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from '../../i18n';
 import { createFault, getFaultCreationData } from '../../api/faults';
 import useAuthStore from '../../store/authStore';
+import { COLORS } from '../../constants/colors';
 
 function getTodayString() {
   const d = new Date();
@@ -290,7 +291,7 @@ export default function ReportFaultScreen() {
     <SafeAreaProvider>
       <ScreenContainer>
         {/* Header */}
-        <LinearGradient colors={['#1A3A6B', '#1E50A0']} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+        <LinearGradient colors={[COLORS.dark, COLORS.dark]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity
             onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
             style={styles.menuBtn}
@@ -376,7 +377,7 @@ export default function ReportFaultScreen() {
             disabled={mutation.isPending}
           >
             <LinearGradient
-              colors={['#1E3A8A', '#0066CC']}
+              colors={[COLORS.primary, COLORS.primaryLight]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.btnSaveGradient}

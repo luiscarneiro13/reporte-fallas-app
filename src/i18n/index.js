@@ -9,13 +9,13 @@ const LANG_KEY = '@ironflow_lang';
 const translations = { en, es, pt };
 
 const I18nContext = createContext({
-  locale: 'en',
+  locale: 'es',
   t: () => '',
   setLocale: () => {},
 });
 
 export function I18nProvider({ children }) {
-  const [locale, setLocaleState] = useState('en');
+  const [locale, setLocaleState] = useState('es');
 
   useEffect(() => {
     AsyncStorage.getItem(LANG_KEY).then((saved) => {
