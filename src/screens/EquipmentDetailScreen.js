@@ -12,7 +12,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from '../i18n';
-import { getEquipmentByUuid } from '../api/equipment';
+import { getEquipmentById } from '../api/equipment';
 import { getFaults } from '../api/faults';
 import useAuthStore from '../store/authStore';
 import ScreenContainer, { ScrollContent } from '../components/ScreenContainer';
@@ -68,7 +68,7 @@ export default function EquipmentDetailScreen() {
 
   const { data: equipment, isLoading: isLoadingEq } = useQuery({
     queryKey: ['equipment', equipmentId],
-    queryFn: () => getEquipmentByUuid(equipmentId),
+    queryFn: () => getEquipmentById(equipmentId),
     enabled: !!equipmentId,
   });
 

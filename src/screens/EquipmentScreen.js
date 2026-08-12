@@ -11,7 +11,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from '../i18n';
 import { getEquipment } from '../api/equipment';
 import ScreenContainer from '../components/ScreenContainer';
@@ -56,16 +56,46 @@ export default function EquipmentScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
-  const { data, isLoading, isError } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteQuery({
     queryKey: ['equipment'],
-    queryFn: () => getEquipment({ per_page: 100 }),
+    queryFn: async ({ pageParam }) => {
+      const res = await getEquipment({ pageParam });
+      const items = res.data?.data?.data ?? [];
+      const pagination = res.data?.data?.pagination;
+      return { items, pagination };
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const p = lastPage.pagination;
+      return p?.current_page < p?.last_page ? p.current_page + 1 : undefined;
+    },
     staleTime: 1000 * 60 * 30,
   });
 
-  const equipmentList = useMemo(() => data ?? [], [data]);
+  const equipmentList = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data]
+  );
+
+  const renderFooter = () => {
+    if (!isFetchingNextPage) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#1E50A0" />
+      </View>
+    );
+  };
 
   const handlePress = (item) => {
-    navigation.navigate('EquipmentDetail', { equipmentId: String(item.uuid) });
+    navigation.navigate('EquipmentDetail', { equipmentId: String(item.id) });
   };
 
   if (isLoading) {
@@ -130,11 +160,18 @@ export default function EquipmentScreen() {
 
         <FlatList
           data={equipmentList}
-          keyExtractor={(item) => String(item.uuid) || String(item.id)}
+          keyExtractor={(item) => String(item.uuid ?? item.id)}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
             <EquipmentCard item={item} onPress={() => handlePress(item)} />
           )}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+          }}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={renderFooter}
+          onRefresh={refetch}
+          refreshing={isLoading}
           ListEmptyComponent={(
             <View style={styles.emptyBox}>
               <Ionicons name="car-outline" size={48} color="#cbd5e0" />
@@ -189,5 +226,6 @@ const styles = StyleSheet.create({
   metaPillText: { fontSize: 11, color: '#718096' },
   emptyBox: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   emptyText: { fontSize: 14, color: '#a0aec0' },
+  footerLoader: { paddingVertical: 20 },
 });
 
