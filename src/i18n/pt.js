@@ -1,7 +1,7 @@
 export default {
   menu: {
     dashboard: 'Painel',
-    fault_summary: 'Falhas abertas',
+    fault_summary: 'Resumo de Falhas',
     closed_faults: 'Falhas fechadas',
     report_fault: 'Reportar Falha',
     equipment: 'Equipamentos',
@@ -111,7 +111,7 @@ export default {
   },
   faults: {
     title: 'Falhas',
-    summary_title: 'Falhas abertas',
+    summary_title: 'Resumo de Falhas',
     closed_faults: 'Falhas fechadas',
     closed_faults_details: 'Detalhes de falha fechada',
     report_title: 'Reportar Falha',
@@ -146,6 +146,12 @@ export default {
     activity_performed_by: 'Atividade Realizada Por',
     activities_performed: 'Atividades Realizadas no Equipamento',
     equipment_maintenance_log: 'Atividades de manutenção do equipamento',
+    executor_internal: 'Executor Interno',
+    executor_external: 'Executor Externo',
+    created_ok: 'Falha reportada com sucesso',
+    closed_ok: 'Falha fechada e arquivada com sucesso',
+    updated_ok: 'Falha atualizada com sucesso',
+    required_fields: 'Preencha os campos obrigatórios',
     closed_date: 'Data de fechamento',
     view_details: 'Ver detalhes',
     filters: 'Filtros',
@@ -199,6 +205,11 @@ export default {
     yes: 'Sim',
     no: 'Não',
     na: 'N/A',
+    filters: 'Filtros',
+    status: 'Status',
+    all: 'Todos',
+    active_only: 'Ativos',
+    inactive_only: 'Inativos',
   },
   profile: {
     title: 'Perfil',

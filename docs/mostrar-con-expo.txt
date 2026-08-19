@@ -1,0 +1,91 @@
+MOSTRAR LA APP AL CLIENTE POR EXPO GO CON UN LINK PERMANENTE (EAS Update)
+===========================================================================
+
+QUÉ ES ESTO
+-----------
+EAS Update publica el bundle de JavaScript en los servidores de Expo. Te da
+un link + QR que el cliente abre desde la app "Expo Go" (Android o iOS) y
+prueba la app sin que vos tengas que dejar tu computadora prendida ni estar
+en la misma red WiFi que él.
+
+LIMITACIÓN: expo-notifications no funciona en Expo Go desde el SDK 53 (este
+proyecto usa Expo 54) — el cliente no va a poder probar las notificaciones
+push ahí. El resto de la app sí funciona normal. Para probar push de
+verdad hace falta un build real (ver docs/DESPLIEGUE.md).
+
+---------------------------------------------------------------------------
+
+PASO 0 — Prerrequisitos
+------------------------
+docker compose up -d
+
+Confirmá que EXPO_TOKEN funciona (NO uses "eas login", falla a propósito
+mientras EXPO_TOKEN esté seteado):
+
+   docker compose exec expo bash
+   eas whoami
+
+
+PASO 1 — Instalar expo-updates
+--------------------------------
+docker compose exec expo npx expo install expo-updates
+
+
+PASO 2 — Configurar EAS Update
+---------------------------------
+docker compose exec expo eas update:configure
+
+
+PASO 3 — Crear un canal separado para las demos
+--------------------------------------------------
+docker compose exec expo eas channel:create demo-cliente
+
+
+PASO 4 — Publicar la demo
+----------------------------
+docker compose exec expo eas update --branch demo-cliente --message "Demo para cliente"
+
+La terminal muestra un QR y un link (https://expo.dev/accounts/.../updates/...).
+Eso es lo que le mandás al cliente.
+
+
+PASO 5 — Cómo lo prueba el cliente
+--------------------------------------
+1. Instala "Expo Go" (Google Play Store / App Store).
+2. Abre el link que le mandaste (o escanea el QR).
+3. Abre directo en Expo Go y carga la app.
+
+
+PASO 6 — Actualizar la demo cuando cambie el código
+--------------------------------------------------------
+docker compose exec expo eas update --branch demo-cliente --message "descripción del cambio"
+
+---------------------------------------------------------------------------
+
+SOLUCIÓN DE PROBLEMAS
+------------------------
+
+"Al escanear el QR, Expo Go pide instalar un development build"
+  El proyecto tiene "expo-dev-client" instalado, que puede interferir.
+  Avisame con el mensaje exacto que aparece.
+
+"Las notificaciones push no funcionan"
+  Esperado en Expo Go (ver limitación arriba). Hace falta un build real.
+
+"eas whoami / eas update da error de autenticación"
+  Repetí el Paso 0 (eas whoami). Si sigue fallando, regenerá el token en
+  https://expo.dev/settings/access-tokens, actualizalo en .env, y reiniciá
+  el contenedor.
+
+
+REFERENCIA RÁPIDA (primera vez)
+-----------------------------------
+docker compose up -d
+docker compose exec expo npx expo install expo-updates
+docker compose exec expo eas update:configure
+docker compose exec expo eas channel:create demo-cliente
+docker compose exec expo eas update --branch demo-cliente --message "Demo para cliente"
+
+REFERENCIA RÁPIDA (republicar cambios)
+-------------------------------------------
+docker compose exec expo eas update --branch demo-cliente --message "descripción del cambio"

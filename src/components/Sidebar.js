@@ -10,7 +10,9 @@ import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../i18n';
 import { useQueryClient } from '@tanstack/react-query';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import useAuthStore from '../store/authStore';
+import { hasFaultSummaryHome } from '../utils/roles';
 import { logoutRequest } from '../api/auth';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useSyncStatus } from '../hooks/useSyncStatus';
@@ -50,25 +52,21 @@ export default function Sidebar(props) {
   const activeRouteName = state?.routes[state?.index]?.name;
   const isOnline = useNetworkStatus();
   const { pendingCount, isSyncing } = useSyncStatus();
-  const isSupervisor = roles.includes('Supervisor');
-  const menuItems    = isSupervisor ? MENU_SUPERVISOR : MENU_OPERADOR;
+  const menuItems    = hasFaultSummaryHome(roles) ? MENU_SUPERVISOR : MENU_OPERADOR;
   const roleLabel    = roles[0] ?? '';
 
-  const [showDevMenu, setShowDevMenu] = React.useState(() => {
-    try {
-      const saved = localStorage.getItem('@ironflow_show_dev_menu');
-      return saved === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [showDevMenu, setShowDevMenu] = React.useState(false);
   const [tapCount, setTapCount] = React.useState(0);
   const tapTimerRef = useRef(null);
 
   React.useEffect(() => {
-    try {
-      localStorage.setItem('@ironflow_show_dev_menu', String(showDevMenu));
-    } catch {}
+    AsyncStorage.getItem('@ironflow_show_dev_menu')
+      .then((saved) => setShowDevMenu(saved === 'true'))
+      .catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    AsyncStorage.setItem('@ironflow_show_dev_menu', String(showDevMenu)).catch(() => {});
   }, [showDevMenu]);
 
   const handleLogoTap = () => {

@@ -67,8 +67,15 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "1366f100-a277-42c8-84dd-9701e6bc6060"
+        "projectId": "0a5cbfd7-d2f7-47c3-9559-bce8aa0d6121"
       }
+    },
+    "owner": "vemitienda",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0a5cbfd7-d2f7-47c3-9559-bce8aa0d6121"
     }
   }
 }

@@ -20,6 +20,7 @@ import EquipmentScreen      from './src/screens/EquipmentScreen';
 import EquipmentDetailScreen from './src/screens/EquipmentDetailScreen';
 import DevConfigScreen      from './src/screens/DevConfigScreen';
 import useAuthStore         from './src/store/authStore';
+import { hasFaultSummaryHome } from './src/utils/roles';
 import { NotificationContext } from './src/contexts/NotificationContext';
 import { setCustomNotificationHandler, registerForPushNotificationsAsync } from './src/utils/notifications';
 import { startConnectivityMonitoring, stopConnectivityMonitoring } from './src/services/networkService';
@@ -97,7 +98,7 @@ function SupervisorDrawer() {
 
 function AppNavigator() {
   const roles = useAuthStore((s) => s.roles);
-  const MainDrawer = roles.includes('Supervisor') ? SupervisorDrawer : OperadorDrawer;
+  const MainDrawer = hasFaultSummaryHome(roles) ? SupervisorDrawer : OperadorDrawer;
   const pendingRoute = useAuthStore((s) => s.pendingRoute);
   const clearPendingRoute = useAuthStore((s) => s.clearPendingRoute);
 

@@ -20,24 +20,8 @@ import { useTranslation } from '../../i18n';
 import { createFault, getFaultCreationData } from '../../api/faults';
 import useAuthStore from '../../store/authStore';
 import { COLORS } from '../../constants/colors';
-
-function getTodayString() {
-  const d = new Date();
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  return `${dd}-${mm}-${yyyy}`;
-}
-
-function parseDateToISO(value) {
-  if (!value) return null;
-  const m = String(value).trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (!m) return undefined;
-  const [, dd, mm, yyyy] = m;
-  const iso = new Date(`${yyyy}-${mm}-${dd}T00:00:00Z`);
-  if (Number.isNaN(iso.getTime())) return undefined;
-  return iso.toISOString();
-}
+import { getTodayString, toApiDate } from '../../utils/dates';
+import { catalogToOptions } from '../../utils/faultCatalog';
 
 function toIntOrNull(v) {
   if (v === null || v === undefined || v === '') return null;
@@ -45,7 +29,7 @@ function toIntOrNull(v) {
   return Number.isNaN(n) ? null : n;
 }
 
-function SelectField({ label, value, onPress, required, disabled }) {
+function SelectField({ label, value, onPress, required, disabled, error }) {
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.label}>
@@ -53,7 +37,7 @@ function SelectField({ label, value, onPress, required, disabled }) {
         {required && <Text style={styles.required}> *</Text>}
       </Text>
       <TouchableOpacity
-        style={[styles.selectInput, disabled && styles.selectInputDisabled]}
+        style={[styles.selectInput, disabled && styles.selectInputDisabled, error && styles.inputError]}
         onPress={disabled ? undefined : onPress}
         disabled={disabled}
         activeOpacity={disabled ? 1 : 0.7}
@@ -63,37 +47,17 @@ function SelectField({ label, value, onPress, required, disabled }) {
         </Text>
         {!disabled && <Ionicons name="chevron-down-outline" size={16} color="#718096" />}
       </TouchableOpacity>
+      {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 }
 
-function buildReporterOption(user, employees = []) {
+function buildReporterOption(user, employeeOptions = []) {
   if (!user) return null;
-
-  if (!Array.isArray(employees)) return null;
-
-  if (user.employee_id != null) {
-    const linked = employees.find((e) => String(e.id) === String(user.employee_id));
-    const label = linked
-      ? `${linked.first_name ?? ''} ${linked.last_name ?? ''}`.trim()
-      : user.name;
-    return {
-      value: String(user.employee_id),
-      label: label || user.name || `#${user.employee_id}`,
-    };
-  }
-
-  const linked = employees.find((e) =>
-    e.users?.some((u) => u.id === user.id)
-  );
-  if (linked) {
-    return {
-      value: String(linked.id),
-      label: `${linked.first_name ?? ''} ${linked.last_name ?? ''}`.trim() || user.name || `#${linked.id}`,
-    };
-  }
-
-  return null;
+  const linked = employeeOptions.find((e) => e.value === String(user.employee_id));
+  if (linked) return linked;
+  const byName = employeeOptions.find((e) => e.label.toLowerCase().includes(String(user.name ?? '').toLowerCase()));
+  return byName ?? null;
 }
 
 function PickerModal({ visible, title, options, onSelect, onClose }) {
@@ -138,8 +102,10 @@ export default function ReportFaultScreen() {
   const [sparePartStatus, setSparePartStatus] = useState(null);
   const [description, setDescription] = useState('');
   const [reportDate, setReportDate] = useState(getTodayString());
+  const [scheduledExecution, setScheduledExecution] = useState('');
 
   const [activeModal, setActiveModal] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const queryClient = useQueryClient();
 
@@ -152,22 +118,24 @@ export default function ReportFaultScreen() {
   const data = creationDataQuery.data ?? {};
 
   const resetForm = () => {
-    setReportedBy(buildReporterOption(user, Array.isArray(data.employee_reported) ? data.employee_reported : []));
+    setReportedBy(null);
     setEquipment(null);
     setServiceArea(null);
     setFaultStatus(null);
     setSparePartStatus(null);
     setDescription('');
     setReportDate(getTodayString());
+    setScheduledExecution('');
+    setFieldErrors({});
   };
 
   const mutation = useMutation({
     mutationFn: createFault,
-    onSuccess: (data) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['faults'] });
       queryClient.invalidateQueries({ queryKey: ['faultCreationData'] });
-      if (data?.offline) {
-        Alert.alert(t('common.saved') || 'Guardado', data.message || 'Guardado localmente');
+      if (result?.offline) {
+        Alert.alert(t('common.saved') || 'Guardado', result.message || 'Guardado localmente');
       } else {
         Alert.alert(t('common.success') || 'OK', t('faults.created_ok') || 'Falla reportada correctamente');
       }
@@ -175,6 +143,11 @@ export default function ReportFaultScreen() {
       navigation.navigate('FaultSummary');
     },
     onError: (err) => {
+      if (err?.response?.status === 422 && err.response.data?.errors) {
+        setFieldErrors(err.response.data.errors);
+        Alert.alert(t('common.error') || 'Error', err.response.data.message || 'Revise los campos marcados');
+        return;
+      }
       const msg =
         err?.response?.data?.message ||
         err?.message ||
@@ -183,105 +156,78 @@ export default function ReportFaultScreen() {
     },
   });
 
-  const employeeList = Object.entries(data.employee_reported || {}).map(([id, display]) => {
-    const parts = display.split(' - ');
-    return {
-      id: Number(id),
-      identification_number: parts[0] || '',
-      first_name: parts[1]?.split(' ')[0] || '',
-      last_name: parts[1]?.split(' ').slice(1).join(' ') || '',
-    };
-  });
+  const employeeOptions = catalogToOptions(data.employee_reported);
+  const equipmentOptions = catalogToOptions(data.equipment);
+  const serviceAreaOptions = catalogToOptions(data.service_area);
+  const faultStatusOptions = catalogToOptions(data.fault_status);
+  const sparePartStatusOptions = catalogToOptions(data.spare_part_status);
 
-  const employeeOptions = employeeList.map((e) => ({
-    value: String(e.id),
-    label: `${e.identification_number ?? ''} ${e.first_name ?? ''} ${e.last_name ?? ''}`.trim() || `#${e.id}`,
-  }));
-
+  // Status de falla: siempre fijo en "Por Programación Interna", sin importar el rol.
   useEffect(() => {
-    if (isOperator) {
-      const reporter = buildReporterOption(user, employeeList);
-      if (reporter) setReportedBy(reporter);
-      return;
+    if (faultStatus || faultStatusOptions.length === 0) return;
+    const fixed = faultStatusOptions.find(
+      (o) => o.label.trim().toLowerCase() === 'por programación interna'
+    );
+    if (fixed) setFaultStatus(fixed);
+  }, [faultStatusOptions, faultStatus]);
+
+  // Reportado por: precargado con el usuario actual (si existe en la lista),
+  // pero siempre editable — cualquier rol puede elegir a otro de la lista.
+  useEffect(() => {
+    if (creationDataQuery.isLoading || reportedBy) return;
+
+    if (isOperator && data.default_employee_reported_id != null) {
+      const opt = employeeOptions.find((o) => o.value === String(data.default_employee_reported_id));
+      if (opt) { setReportedBy(opt); return; }
     }
-    if (creationDataQuery.isLoading) return;
-    const reporter = buildReporterOption(user, employeeList);
-    if (reporter) setReportedBy(reporter);
-  }, [user, data.employee_reported, creationDataQuery.isLoading, isOperator]);
 
-  const unwrap = (field) => (data[field]?.data ?? []);
-
-  const equipmentOptions = unwrap('equipment').map((e) => {
-    const label = `${e.brand_name ?? ''} ${e.vehicle_model ?? ''} ${e.placa ?? ''}`.trim() || `#${e.id}`;
-    return { value: String(e.id), label, numericId: e.id };
-  });
+    const guess = buildReporterOption(user, employeeOptions);
+    if (guess) setReportedBy(guess);
+  }, [creationDataQuery.isLoading, data.default_employee_reported_id, isOperator, reportedBy]);
 
   useEffect(() => {
     if (prefillEquipmentId && equipmentOptions.length > 0 && !equipment) {
       const prefill = equipmentOptions.find((opt) => opt.value === String(prefillEquipmentId));
-      if (prefill) {
-        setEquipment(prefill);
-      }
+      if (prefill) setEquipment(prefill);
     }
-  }, [prefillEquipmentId, equipmentOptions]);
-
-  const serviceAreaOptions = unwrap('service_area').map((a) => ({
-    value: String(a.id),
-    label: a.name ?? `#${a.id}`,
-  }));
-
-  const faultStatusList = unwrap('fault_status');
-  const faultStatusOptions = faultStatusList.map((s) => ({
-    value: String(s.id),
-    label: (s.name ?? `#${s.id}`).trim(),
-  }));
-
-  useEffect(() => {
-    if (faultStatusList.length > 0 && !faultStatus) {
-      const defaultStatusId = data.default_fault_status_id;
-      const defaultStatus = faultStatusList.find(s => s.id === defaultStatusId);
-      if (defaultStatus) {
-        setFaultStatus({
-          value: String(defaultStatus.id),
-          label: defaultStatus.name,
-        });
-      }
-    }
-  }, [data.fault_status, data.default_fault_status_id, faultStatus]);
-
-  const sparePartStatusOptions = unwrap('spare_part_status').map((s) => ({
-    value: String(s.id),
-    label: s.name ?? `#${s.id}`,
-  }));
+  }, [prefillEquipmentId, equipmentOptions.length]);
 
   const modals = {
-    reportedBy:       { setter: setReportedBy,       options: employeeOptions,          loading: creationDataQuery.isLoading },
-    equipment:        { setter: setEquipment,        options: equipmentOptions,         loading: creationDataQuery.isLoading },
-    serviceArea:      { setter: setServiceArea,      options: serviceAreaOptions,       loading: creationDataQuery.isLoading },
-    faultStatus:      { setter: setFaultStatus,      options: faultStatusOptions,       loading: creationDataQuery.isLoading },
-    sparePartStatus:  { setter: setSparePartStatus,  options: sparePartStatusOptions,   loading: creationDataQuery.isLoading },
+    reportedBy:       { setter: setReportedBy,       options: employeeOptions,        loading: creationDataQuery.isLoading },
+    equipment:        { setter: setEquipment,        options: equipmentOptions,       loading: creationDataQuery.isLoading },
+    serviceArea:      { setter: setServiceArea,      options: serviceAreaOptions,     loading: creationDataQuery.isLoading },
+    faultStatus:      { setter: setFaultStatus,      options: faultStatusOptions,     loading: creationDataQuery.isLoading },
+    sparePartStatus:  { setter: setSparePartStatus,  options: sparePartStatusOptions, loading: creationDataQuery.isLoading },
   };
 
   const handleSave = () => {
-    if (!reportedBy || !equipment || !serviceArea || !faultStatus || !sparePartStatus || !description.trim()) {
+    const sparePartRequired = !isOperator;
+    if (
+      !reportedBy || !equipment || !serviceArea || !faultStatus || !description.trim() ||
+      (sparePartRequired && !sparePartStatus)
+    ) {
       Alert.alert(t('common.error') || 'Error', t('faults.required_fields') || 'Complete los campos obligatorios');
       return;
     }
 
-    const reportISO = parseDateToISO(reportDate);
-    if (reportISO === undefined) {
-      Alert.alert(t('common.error') || 'Error', 'Fecha de reporte inválida (dd-mm-yyyy)');
+    const reportISO = toApiDate(reportDate);
+    const scheduledISO = toApiDate(scheduledExecution);
+    if (reportISO === undefined || scheduledISO === undefined) {
+      Alert.alert(t('common.error') || 'Error', 'Fecha inválida (dd-mm-yyyy)');
       return;
     }
 
+    setFieldErrors({});
+
     const payload = {
       employee_reported_id: toIntOrNull(reportedBy.value),
-      equipment_id:         equipment.numericId,
+      equipment_id:         toIntOrNull(equipment.value),
       service_area_id:      toIntOrNull(serviceArea.value),
       description:          description.trim(),
       fault_status_id:      toIntOrNull(faultStatus.value),
-      spare_part_status_id: toIntOrNull(sparePartStatus.value),
+      spare_part_status_id: sparePartStatus ? toIntOrNull(sparePartStatus.value) : null,
       report_date:          reportISO,
+      scheduled_execution:  scheduledISO,
     };
 
     mutation.mutate(payload);
@@ -311,31 +257,36 @@ export default function ReportFaultScreen() {
             onPress={() => setActiveModal('reportedBy')}
             required
             disabled={isOperator}
+            error={fieldErrors.employee_reported_id?.[0]}
           />
           <SelectField
             label={t('faults.equipment')}
             value={equipment?.label}
             onPress={() => setActiveModal('equipment')}
             required
+            error={fieldErrors.equipment_id?.[0]}
           />
           <SelectField
             label={t('faults.service_area')}
             value={serviceArea?.label}
             onPress={() => setActiveModal('serviceArea')}
             required
+            error={fieldErrors.service_area_id?.[0]}
           />
           <SelectField
             label={t('faults.fault_status')}
             value={faultStatus?.label}
             onPress={() => setActiveModal('faultStatus')}
             required
-            disabled={isOperator}
+            disabled
+            error={fieldErrors.fault_status_id?.[0]}
           />
           <SelectField
             label={t('faults.spare_part_status')}
             value={sparePartStatus?.label}
             onPress={() => setActiveModal('sparePartStatus')}
-            required
+            required={!isOperator}
+            error={fieldErrors.spare_part_status_id?.[0]}
           />
 
           {/* Fault Description */}
@@ -345,28 +296,42 @@ export default function ReportFaultScreen() {
               <Text style={styles.required}> *</Text>
             </Text>
             <TextInput
-              style={[styles.textInput, styles.textArea]}
+              style={[styles.textInput, styles.textArea, fieldErrors.description && styles.inputError]}
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
             />
+            {fieldErrors.description?.[0] && <Text style={styles.errorText}>{fieldErrors.description[0]}</Text>}
           </View>
 
           {/* Report Date */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
               {t('faults.report_date')}
-              <Text style={styles.required}> *</Text>
             </Text>
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput, fieldErrors.report_date && styles.inputError]}
               value={reportDate}
               onChangeText={setReportDate}
               placeholder="dd-mm-yyyy"
               placeholderTextColor="#a0aec0"
             />
+            {fieldErrors.report_date?.[0] && <Text style={styles.errorText}>{fieldErrors.report_date[0]}</Text>}
+          </View>
+
+          {/* Scheduled Execution */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>{t('faults.scheduled_execution')}</Text>
+            <TextInput
+              style={[styles.textInput, fieldErrors.scheduled_execution && styles.inputError]}
+              value={scheduledExecution}
+              onChangeText={setScheduledExecution}
+              placeholder="dd-mm-yyyy"
+              placeholderTextColor="#a0aec0"
+            />
+            {fieldErrors.scheduled_execution?.[0] && <Text style={styles.errorText}>{fieldErrors.scheduled_execution[0]}</Text>}
           </View>
 
           {/* Save button */}
@@ -457,6 +422,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#edf2f7',
     borderColor: '#e2e8f0',
   },
+  inputError: {
+    borderColor: '#e53e3e',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#e53e3e',
+    marginTop: 4,
+  },
   selectText: {
     fontSize: 15,
     color: '#2d3748',
@@ -531,4 +504,3 @@ const styles = StyleSheet.create({
     color: '#2d3748',
   },
 });
-

@@ -10,25 +10,23 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from '../i18n';
-import { getEquipmentById } from '../api/equipment';
-import { getFaults } from '../api/faults';
-import useAuthStore from '../store/authStore';
+import { getEquipmentHistory } from '../api/equipment';
 import ScreenContainer, { ScrollContent } from '../components/ScreenContainer';
 import { COLORS } from '../constants/colors';
 
 const STATUS_CONFIG = {
-  'Open':        { color: '#e53e3e', bg: '#FFF5F5' },
-  'In Progress': { color: '#d69e2e', bg: '#FFFFF0' },
-  'Scheduled':   { color: '#3182ce', bg: '#EBF8FF' },
-  'Closed':      { color: '#38a169', bg: '#F0FFF4' },
+  'En espera de repuesto':                     { color: '#e53e3e', bg: '#FFF5F5' },
+  'En ejecución':                              { color: '#d69e2e', bg: '#FFFFF0' },
+  'En espera por Coordinación con el Cliente':  { color: '#3182ce', bg: '#EBF8FF' },
+  'Por Programación Interna':                  { color: '#805ad5', bg: '#E9D8FD' },
 };
 
 const DEFAULT_STATUS = { color: '#718096', bg: '#F7FAFC' };
 
-function FaultHistoryItem({ fault, isSupervisor }) {
-  const cfg = STATUS_CONFIG[fault.status] || DEFAULT_STATUS;
+function FaultHistoryItem({ fault }) {
+  const cfg = STATUS_CONFIG[fault.fault_status_name] || DEFAULT_STATUS;
   return (
     <View style={styles.faultItem}>
       <View style={styles.faultRow}>
@@ -36,21 +34,11 @@ function FaultHistoryItem({ fault, isSupervisor }) {
         <View style={styles.faultContent}>
           <Text style={styles.faultDesc} numberOfLines={2}>{fault.description}</Text>
           <View style={styles.faultMeta}>
-            <Text style={[styles.faultStatus, { color: cfg.color }]}>{fault.status}</Text>
-            <Text style={styles.faultDate}>{fault.report_date}</Text>
+            <Text style={[styles.faultStatus, { color: cfg.color }]}>{fault.fault_status_name}</Text>
+            <Text style={styles.faultDate}>{fault.report_date?.slice(0, 10)}</Text>
           </View>
         </View>
       </View>
-      {isSupervisor && (
-        <View style={styles.faultActions}>
-          <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDisabled]} activeOpacity={1}>
-            <Ionicons name="create-outline" size={16} color="#a0aec0" />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDisabled]} activeOpacity={1}>
-            <Ionicons name="trash-outline" size={16} color="#a0aec0" />
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 }
@@ -60,54 +48,17 @@ export default function EquipmentDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
-  const user = useAuthStore((s) => s.user);
-  const roles = useAuthStore((s) => s.roles);
-  const isSupervisor = roles.includes('Supervisor');
 
   const equipmentId = route.params?.equipmentId;
 
-  const { data: equipment, isLoading: isLoadingEq } = useQuery({
-    queryKey: ['equipment', equipmentId],
-    queryFn: () => getEquipmentById(equipmentId),
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['equipmentHistory', equipmentId],
+    queryFn: () => getEquipmentHistory(equipmentId),
     enabled: !!equipmentId,
   });
 
-  const {
-    data: faultsData,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading: isLoadingFaults,
-  } = useInfiniteQuery({
-    queryKey: ['faults', { equipment: equipment?.id }],
-    queryFn: async ({ pageParam }) => {
-      const res = await getFaults({
-        pageParam,
-        filters: { equipment_id: equipment?.id },
-      });
-      const raw = res.data?.data?.data ?? [];
-      const mapped = raw.map((f) => ({
-        id: f.id,
-        description: f.description,
-        status: f.fault_status_name,
-        report_date: f.report_date,
-        reported_by_id: f.reported_by_id,
-      }));
-      const pagination = res.data?.data?.pagination;
-      return { mapped, pagination };
-    },
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => {
-      const p = lastPage.pagination;
-      return p?.current_page < p?.last_page ? p.current_page + 1 : undefined;
-    },
-    enabled: !!equipment,
-  });
-
-  const faults = useMemo(
-    () => faultsData?.pages.flatMap((p) => p.mapped) ?? [],
-    [faultsData]
-  );
+  const equipment = data?.equipment;
+  const history = useMemo(() => data?.history ?? [], [data]);
 
   const handleReportFault = () => {
     if (!equipment) return;
@@ -117,7 +68,7 @@ export default function EquipmentDetailScreen() {
     });
   };
 
-  if (isLoadingEq) {
+  if (isLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#1E50A0" />
@@ -125,7 +76,7 @@ export default function EquipmentDetailScreen() {
     );
   }
 
-  if (!equipment) {
+  if (isError || !equipment) {
     return (
       <View style={styles.center}>
         <Ionicons name="warning-outline" size={48} color="#e53e3e" />
@@ -153,18 +104,21 @@ export default function EquipmentDetailScreen() {
             <View style={styles.equipmentIcon}>
               <Ionicons name="car-outline" size={40} color="#1A3A6B" />
             </View>
-            <Text style={styles.equipmentName}>{equipment.placa || equipment.name || `#${equipment.id}`}</Text>
+            <Text style={styles.equipmentName}>{equipment.internal_code || equipment.placa || `#${equipment.id}`}</Text>
             {(equipment.brand_name || equipment.vehicle_model) && (
               <Text style={styles.equipmentSub}>
                 {[equipment.brand_name, equipment.vehicle_model].filter(Boolean).join(' ')}
               </Text>
             )}
             <View style={styles.equipmentMeta}>
-              {equipment.equipment_type_name && (
-                <Text style={styles.metaPill}>{equipment.equipment_type_name}</Text>
+              {equipment.placa && (
+                <Text style={styles.metaPill}>{equipment.placa}</Text>
               )}
-              {equipment.year && (
-                <Text style={styles.metaPill}>{equipment.year}</Text>
+              {equipment.type && (
+                <Text style={styles.metaPill}>{equipment.type}</Text>
+              )}
+              {equipment.model_year && (
+                <Text style={styles.metaPill}>{equipment.model_year}</Text>
               )}
               {equipment.color && (
                 <Text style={styles.metaPill}>{equipment.color}</Text>
@@ -185,36 +139,19 @@ export default function EquipmentDetailScreen() {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              {t('equipment.my_fault_history') || 'Mis Fallas Reportadas'}
+              {t('equipment.fault_history') || 'Historial de Fallas'}
             </Text>
 
-            {isLoadingFaults && faults.length === 0 && (
-              <ActivityIndicator size="small" color="#1E50A0" style={{ marginVertical: 20 }} />
-            )}
-
-            {faults.length === 0 && !isLoadingFaults && (
+            {history.length === 0 && (
               <View style={styles.emptyBox}>
                 <Ionicons name="document-text-outline" size={36} color="#cbd5e0" />
                 <Text style={styles.emptyText}>{t('common.no_records') || 'No hay registros'}</Text>
               </View>
             )}
 
-            {faults.map((fault) => (
-              <FaultHistoryItem key={fault.id} fault={fault} isSupervisor={isSupervisor} />
+            {history.map((fault) => (
+              <FaultHistoryItem key={fault.id} fault={fault} />
             ))}
-
-            {hasNextPage && (
-              <TouchableOpacity
-                style={styles.loadMoreBtn}
-                onPress={() => { if (!isFetchingNextPage) fetchNextPage(); }}
-              >
-                {isFetchingNextPage ? (
-                  <ActivityIndicator size="small" color="#1E50A0" />
-                ) : (
-                  <Text style={styles.loadMoreText}>{t('actions.load_more') || 'Cargar más'}</Text>
-                )}
-              </TouchableOpacity>
-            )}
           </View>
 
         </ScrollContent>
@@ -266,15 +203,9 @@ const styles = StyleSheet.create({
   faultMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   faultStatus: { fontSize: 11, fontWeight: '700' },
   faultDate: { fontSize: 11, color: '#a0aec0' },
-  faultActions: { flexDirection: 'row', gap: 8, marginTop: 8, marginLeft: 18 },
-  actionBtn: { padding: 6, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' },
-  actionBtnDisabled: { opacity: 0.4 },
   emptyBox: { alignItems: 'center', paddingVertical: 30, gap: 8 },
   emptyText: { fontSize: 14, color: '#a0aec0' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   retryBtn: { borderWidth: 1.5, borderColor: '#1E50A0', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 },
   retryText: { fontSize: 14, fontWeight: '600', color: '#1E50A0' },
-  loadMoreBtn: { paddingVertical: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f0f0f0', marginTop: 8 },
-  loadMoreText: { fontSize: 13, fontWeight: '600', color: '#3182ce' },
 });
-

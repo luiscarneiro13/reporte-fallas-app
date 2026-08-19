@@ -1,0 +1,76 @@
+CONTEXTO
+Pantalla "Resumen de fallas" de la app móvil. Cada card de falla muestra un
+badge con ícono de reloj y los días de espera (ej. "3d"), calculados a
+partir del campo `duration_days` que ya devuelve el listado.
+
+BUG DETECTADO
+Cuando una falla se crea sin `report_date` (ese campo es opcional al
+reportar), el backend devuelve `duration_days: null`. El front interpola
+ese valor directo en el texto del badge, así que en vez de un número
+muestra literalmente "nulld" (string "null" + "d").
+
+Ejemplo real de falla afectada:
+GET /api/v1/fallas (branch actual, página 1) — item id 467:
+{
+  "id": 467,
+  "description": "REQUIERE INSTALACION DE SISTEMA DE ENCENDIDO DEL MOTOR-COMPRESOR",
+  "report_date": null,
+  "duration_days": null,
+  ...
+}
+
+Confirmado que el problema es exactamente ese: cuando `report_date` es
+null, `duration_days` también sale null porque no hay fecha de partida
+para calcular la diferencia de días.
+
+ENDPOINT AFECTADO
+GET /api/v1/fallas (listado de fallas activas)
+
+LO QUE NECESITO
+1. Cuando `report_date` sea null, que `duration_days` se calcule igual
+   pero usando la fecha de última actualización del registro (`updated_at`)
+   como fecha de partida, en vez de devolver null.
+
+2. Además, agregar `created_at` y `updated_at` como campos del item en la
+   respuesta de GET /api/v1/fallas (hoy no vienen — sí vienen en
+   GET /api/v1/equipos/{id}/historial, pero no acá). Los necesito
+   disponibles en el front por si hace falta mostrar una fecha alternativa
+   en la card cuando `report_date` es null (hoy ese caso muestra "N/A"
+   porque no hay ningún otro dato de fecha para usar).
+
+SHAPE ACTUAL DEL ITEM (para referencia, campos que sí trae hoy):
+{
+  "id": int,
+  "branch_id": int,
+  "description": string,
+  "report_date": string|null,
+  "closed_at": string|null,
+  "internal_id": string|null,
+  "scheduled_execution": string|null,
+  "completed_execution": string|null,
+  "equipment_maintenance_log": string|null,
+  "reported_by_id": int,
+  "reported_by_name": string,
+  "equipment_id": int,
+  "equipment_name": string,
+  "internal_code": string,
+  "service_area_id": int,
+  "service_area_name": string,
+  "fault_status_id": int,
+  "fault_status_name": string,
+  "spare_part_status_id": int,
+  "spare_part_status_name": string,
+  "executor_id": int|null,
+  "executor_name": string|null,
+  "executor_external_id": int|null,
+  "executor_external_name": string|null,
+  "duration_days": int|null,
+  "project_id": int|null,
+  "project_name": string|null,
+  "division_id": int|null,
+  "division_name": string|null
+}
+
+Con el fix, esperaría además "created_at" y "updated_at" (mismo formato
+que ya usan en GET /api/v1/equipos/{id}/historial), y que "duration_days"
+nunca vuelva null salvo que ni report_date ni updated_at existan.

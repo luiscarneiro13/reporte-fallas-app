@@ -16,6 +16,15 @@ export const createFault = async (payload) => {
 export const getFaultCreationData = () =>
   client.get('/fallas/crear-datos').then((r) => r.data?.data ?? {});
 
+export const getFaultFilterData = () =>
+  client.get('/fallas/filtros-datos').then((r) => r.data?.data ?? {});
+
+export const getFaultById = (id) =>
+  client.get(`/fallas/${id}`).then((r) => r.data?.data ?? null);
+
+export const updateFault = (id, payload) =>
+  client.put(`/fallas/${id}`, payload).then((r) => r.data);
+
 export const getProjects = () =>
   client.get('/proyectos', { params: { per_page: 200 } })
     .then((r) => r.data?.data?.data ?? []);

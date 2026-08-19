@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,13 +17,14 @@ import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useTranslation } from '../../i18n';
-import { getFaults, getFaultCreationData, getProjects } from '../../api/faults';
+import { getFaults, getFaultFilterData } from '../../api/faults';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { syncAll } from '../../services/syncService';
 import { getQueue } from '../../services/offlineQueue';
 import { COLORS } from '../../constants/colors';
+import { catalogToOptions } from '../../utils/faultCatalog';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const STATUS_CONFIG = {
@@ -35,35 +36,18 @@ const STATUS_CONFIG = {
 
 const DEFAULT_STATUS = { color: '#718096', bg: '#F7FAFC' };
 
-const SPANISH_TO_ENGLISH_STATUS = {
-  'Creada': 'Open',
-  'En Ejecución': 'In Progress',
-  'Bloqueada': 'Blocked',
-};
+const ALL_OPTION = { value: '', label: 'Todos' };
 
-const ALL_OPTION         = { value: '', label: 'All' };
-const STATUS_OPTIONS     = [
-  ALL_OPTION,
-  { value: 'Open',        labelKey: 'faults.status_open' },
-  { value: 'In Progress', labelKey: 'faults.status_in_progress' },
-  { value: 'Blocked',     labelKey: 'faults.status_blocked' },
-];
-const SPARE_PART_OPTIONS = [ALL_OPTION,
-  { value: 'Por solicitar', label: 'Por solicitar' },
-  { value: 'Solicitado',   label: 'Solicitado' },
-  { value: 'Disponible',   label: 'Disponible' },
-];
-
-const buildParams = (f, statusIdMap) => {
+const buildParams = (f) => {
   const p = {};
-  if (f.equipment)       p.equipment         = f.equipment;
-  if (f.serviceArea)     p.service_area       = f.serviceArea;
-  if (f.faultStatus && statusIdMap[f.faultStatus]) p.fault_status_id = statusIdMap[f.faultStatus];
-  if (f.sparePartStatus) p.spare_part_status  = f.sparePartStatus;
-  if (f.project)         p.project           = f.project;
-  if (f.from)            p.from              = f.from;
-  if (f.to)              p.to                = f.to;
-  if (f.search)          p.search            = f.search;
+  if (f.query)              p.query               = f.query;
+  if (f.equipment_id)       p.equipment_id         = f.equipment_id;
+  if (f.service_area_id)    p.service_area_id      = f.service_area_id;
+  if (f.fault_status_id)    p.fault_status_id      = f.fault_status_id;
+  if (f.spare_part_status_id) p.spare_part_status_id = f.spare_part_status_id;
+  if (f.project_id)         p.project_id           = f.project_id;
+  if (f.from)                p.from                 = f.from;
+  if (f.to)                  p.to                   = f.to;
   return p;
 };
 
@@ -81,6 +65,7 @@ function StatBadge({ count, label, color, isActive, onPress }) {
 }
 
 function FaultCard({ fault, onPress }) {
+  const { t } = useTranslation();
   const cfg = STATUS_CONFIG[fault.status] || DEFAULT_STATUS;
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
@@ -114,7 +99,7 @@ function FaultCard({ fault, onPress }) {
           <View style={styles.waitingBadge}>
             <Ionicons name="time-outline" size={12} color="#e53e3e" />
             <Text style={styles.waitingText}>
-              {fault.waitingDays === 0 ? 'Today' : `${fault.waitingDays}d`}
+              {fault.waitingDays ? `${fault.waitingDays}d` : (t('faults.today') || 'Hoy')}
             </Text>
           </View>
         </View>
@@ -147,28 +132,28 @@ function PickerModal({ visible, title, options, onSelect, onClose }) {
   );
 }
 
-function FilterSheet({ visible, filters, onChange, onApply, onClose, equipmentOptions, serviceAreaOptions, projectOptions }) {
+function FilterSheet({
+  visible, filters, onChange, onApply, onClose,
+  equipmentOptions, serviceAreaOptions, faultStatusOptions, sparePartStatusOptions, projectOptions,
+}) {
   const { t } = useTranslation();
   const [pickerModal, setPickerModal] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerField, setDatePickerField] = useState(null);
 
   const fields = [
-    { key: 'equipment',       label: t('faults.equipment'),         type: 'select', options: equipmentOptions },
-    { key: 'serviceArea',     label: t('faults.service_area'),      type: 'select', options: serviceAreaOptions },
-    { key: 'faultStatus',     label: t('faults.fault_status'),      options: STATUS_OPTIONS,       type: 'select' },
-    { key: 'sparePartStatus', label: t('faults.spare_part_status'), options: SPARE_PART_OPTIONS,   type: 'select' },
-    { key: 'project',         label: t('faults.projects'),          type: 'select', options: projectOptions },
-    { key: 'from',            label: t('faults.from'),              type: 'date' },
-    { key: 'to',              label: t('faults.to'),                type: 'date' },
-    { key: 'search',          label: t('actions.search'),           type: 'text' },
+    { key: 'equipment_id',         label: t('faults.equipment'),         type: 'select', options: equipmentOptions },
+    { key: 'service_area_id',      label: t('faults.service_area'),      type: 'select', options: serviceAreaOptions },
+    { key: 'fault_status_id',      label: t('faults.fault_status'),      type: 'select', options: faultStatusOptions },
+    { key: 'spare_part_status_id', label: t('faults.spare_part_status'), type: 'select', options: sparePartStatusOptions },
+    { key: 'project_id',           label: t('faults.projects'),          type: 'select', options: projectOptions },
+    { key: 'from',                 label: t('faults.from'),              type: 'date' },
+    { key: 'to',                   label: t('faults.to'),                type: 'date' },
+    { key: 'query',                label: t('actions.search'),           type: 'text' },
   ];
 
   const activeOptions = pickerModal
-    ? fields.find(f => f.key === pickerModal)?.options.map(opt => ({
-        ...opt,
-        label: opt.labelKey ? t(opt.labelKey) : opt.label,
-      })) || []
+    ? fields.find(f => f.key === pickerModal)?.options || []
     : [];
 
   return (
@@ -196,7 +181,7 @@ function FilterSheet({ visible, filters, onChange, onApply, onClose, equipmentOp
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.filterSelectText, !filters[field.key] && styles.filterPlaceholder]}>
-                      {filters[field.key] || 'Todos'}
+                      {field.options.find(o => o.value === filters[field.key])?.label || 'Todos'}
                     </Text>
                     <Ionicons name="chevron-down-outline" size={15} color="#718096" />
                   </TouchableOpacity>
@@ -348,58 +333,37 @@ export default function FaultSummaryScreen() {
     }
   }, [isOnline]);
 
-  const STATUS_LABEL_MAP = {
-    'Open': t('faults.status_open'),
-    'In Progress': t('faults.status_in_progress'),
-    'Blocked': t('faults.status_blocked'),
-    'Closed': t('faults.status_closed'),
-  };
-
   const [showFilters,   setShowFilters]   = useState(false);
   const [filters,       setFilters]       = useState({});
   const [activeFilters, setActiveFilters] = useState({});
-  const [selectedStatus, setSelectedStatus] = useState('todos');
-  const [statusIdMap, setStatusIdMap] = useState({});
 
-  const creationDataQuery = useQuery({
-    queryKey: ['faultCreationData'],
-    queryFn: getFaultCreationData,
+  const filterDataQuery = useQuery({
+    queryKey: ['faultFilterData'],
+    queryFn: getFaultFilterData,
     staleTime: 1000 * 60 * 30,
   });
-  const creationData = creationDataQuery.data ?? {};
+  const filterData = filterDataQuery.data ?? {};
 
-  const projectsQuery = useQuery({
-    queryKey: ['projects'],
-    queryFn: getProjects,
-    staleTime: 1000 * 60 * 30,
-  });
-  const projects = projectsQuery.data ?? [];
-
-  const unwrap = useCallback((field) => (creationData[field]?.data ?? []), [creationData]);
-
-  const equipmentOptions = useMemo(() => {
-    const items = unwrap('equipment');
-    return [ALL_OPTION, ...items.map(e => {
-      const label = `${e.brand_name ?? ''} ${e.vehicle_model ?? ''} ${e.placa ?? ''}`.trim() || `#${e.id}`;
-      return { value: label, label };
-    })];
-  }, [creationData]);
-
-  const serviceAreaOptions = useMemo(() => {
-    const items = unwrap('service_area');
-    return [ALL_OPTION, ...items.map(a => ({
-      value: a.name ?? `#${a.id}`,
-      label: a.name ?? `#${a.id}`,
-    }))];
-  }, [creationData]);
-
-  const projectOptions = useMemo(() => {
-    const items = Array.isArray(projects) ? projects : [];
-    return [ALL_OPTION, ...items.map(p => ({
-      value: p.project_name || p.name || `#${p.id}`,
-      label: p.project_name || p.name || `#${p.id}`,
-    }))];
-  }, [projects]);
+  const equipmentOptions = useMemo(
+    () => [ALL_OPTION, ...catalogToOptions(filterData.equipment)],
+    [filterData]
+  );
+  const serviceAreaOptions = useMemo(
+    () => [ALL_OPTION, ...catalogToOptions(filterData.service_area)],
+    [filterData]
+  );
+  const faultStatusOptions = useMemo(
+    () => [ALL_OPTION, ...catalogToOptions(filterData.fault_status)],
+    [filterData]
+  );
+  const sparePartStatusOptions = useMemo(
+    () => [ALL_OPTION, ...catalogToOptions(filterData.spare_part_status)],
+    [filterData]
+  );
+  const projectOptions = useMemo(
+    () => [ALL_OPTION, ...catalogToOptions(filterData.projects)],
+    [filterData]
+  );
 
   const {
     data,
@@ -413,19 +377,9 @@ export default function FaultSummaryScreen() {
   } = useInfiniteQuery({
     queryKey: ['faults', activeFilters],
     queryFn: async ({ pageParam }) => {
-      const res = await getFaults({ pageParam, filters: buildParams(activeFilters, statusIdMap) });
+      const res = await getFaults({ pageParam, filters: buildParams(activeFilters) });
       const raw = res.data.data.data;
-      
-      // Extract status IDs from the response
-      const statusIds = {};
-      raw.forEach(f => {
-        if (f.fault_status_name && f.fault_status_id) {
-          const englishName = SPANISH_TO_ENGLISH_STATUS[f.fault_status_name] || f.fault_status_name;
-          statusIds[englishName] = f.fault_status_id;
-        }
-      });
-      setStatusIdMap(prev => ({ ...prev, ...statusIds }));
-      
+
       const mapped = raw.map((f) => ({
         id: f.id,
         equipment: f.equipment_name,
@@ -485,19 +439,6 @@ export default function FaultSummaryScreen() {
   const handleClearFilters = () => {
     setActiveFilters({});
     setFilters({});
-    setSelectedStatus('todos');
-  };
-
-  const handleStatusFilter = (status) => {
-    setSelectedStatus(status);
-    if (status === 'todos') {
-      setActiveFilters(prev => {
-        const { faultStatus, ...rest } = prev;
-        return rest;
-      });
-    } else {
-      setActiveFilters(prev => ({ ...prev, faultStatus: status }));
-    }
   };
 
   const renderFooter = () => {
@@ -542,6 +483,7 @@ export default function FaultSummaryScreen() {
         </LinearGradient>
 
         {/* Stats bar */}
+        {/*
         <View style={styles.statsBar}>
           <StatBadge
             count={stats.total}
@@ -572,6 +514,7 @@ export default function FaultSummaryScreen() {
             onPress={() => handleStatusFilter('Blocked')}
           />
         </View>
+        */}
 
         {/* Sync banner */}
         {pendingCount > 0 && (
@@ -645,6 +588,8 @@ export default function FaultSummaryScreen() {
           onClose={() => setShowFilters(false)}
           equipmentOptions={equipmentOptions}
           serviceAreaOptions={serviceAreaOptions}
+          faultStatusOptions={faultStatusOptions}
+          sparePartStatusOptions={sparePartStatusOptions}
           projectOptions={projectOptions}
         />
       </ScreenContainer>

@@ -1,0 +1,102 @@
+CONTEXTO
+La pantalla "Equipos" de la app móvil necesita los mismos filtros que ya
+existen en la versión web. El endpoint es el mismo GET /api/v1/equipos que ya
+usan para listar — los filtros son query params adicionales sobre esa misma
+llamada.
+
+Auth: Authorization: Bearer {token}. Permiso requerido: "Equipos Ver".
+Envelope de respuesta: { success, message, data: { data: [...], pagination } }.
+
+═══════════════════════════════════════════════════════════════════════════
+GET /api/v1/equipos — FILTROS DISPONIBLES
+═══════════════════════════════════════════════════════════════════════════
+
+┌───────────────┬────────┬─────────────────────────────────────────────────┐
+│ Param          │ Tipo   │ Comportamiento                                    │
+├───────────────┼────────┼─────────────────────────────────────────────────┤
+│ query          │ string │ Búsqueda libre (un solo campo de texto). Si es    │
+│                │        │ puramente numérico, busca por id exacto. Si no,   │
+│                │        │ hace LIKE sobre: placa, model_year, internal_code,│
+│                │        │ color, y también sobre el nombre de los proyectos │
+│                │        │ asignados al equipo.                              │
+├───────────────┼────────┼─────────────────────────────────────────────────┤
+│ internal_code  │ string │ Filtro independiente de `query`, LIKE solo sobre  │
+│                │        │ el código interno. Se puede combinar con `query`  │
+│                │        │ (ambos aplican a la vez, son AND).                │
+├───────────────┼────────┼─────────────────────────────────────────────────┤
+│ project_id     │ int    │ Solo equipos que tienen ese proyecto asignado     │
+│                │        │ (relación N:M equipment↔projects). Enviar "0" o   │
+│                │        │ simplemente omitir el param = sin filtrar (todos).│
+├───────────────┼────────┼─────────────────────────────────────────────────┤
+│ active         │ "1"/"0"│ "1" = solo activos, "0" = solo inactivos. Omitir  │
+│                │        │ el param (o mandar string vacío) = todos, sin     │
+│                │        │ filtrar por este campo. OJO: no es lo mismo omitir│
+│                │        │ que mandar active=0 — active=0 SÍ filtra a solo   │
+│                │        │ los inactivos.                                    │
+├───────────────┼────────┼─────────────────────────────────────────────────┤
+│ sort_by        │ string │ Una de: id, internal_code, type, placa,           │
+│                │        │ brand_name, vehicle_model, model_year, color.     │
+│                │        │ Si no es una de estas, cae al default (id).       │
+├───────────────┼────────┼─────────────────────────────────────────────────┤
+│ sort_dir       │ string │ asc | desc. Default: desc.                        │
+├───────────────┼────────┼─────────────────────────────────────────────────┤
+│ page           │ int    │ Paginación estándar. Tamaño de página fijo: 10    │
+│                │        │ (no configurable por parámetro).                  │
+└───────────────┴────────┴─────────────────────────────────────────────────┘
+
+Todos los filtros son combinables entre sí (se aplican con AND). Ejemplo: se
+puede pedir "equipos activos del proyecto X que contengan 'CSM' en el
+código interno", combinando active + project_id + internal_code a la vez.
+
+CATÁLOGO PARA EL SELECT DE "Proyecto" (dropdown del filtro):
+La web arma ese select con GET-equivalente a Project::where('branch_id',...)
+prepend('Todos','0'). Por API, usar los proyectos que ya devuelve
+GET /api/v1/fallas/crear-datos NO aplica (esa lista es de otro contexto). Si
+la app móvil necesita este dropdown de proyectos, avisar — hoy no hay un
+endpoint API dedicado a listar proyectos por separado con ese "Todos"
+prepend; existe /api/v1/proyectos (apiResource, paginado a 10, pensado para
+administración de proyectos, no ideal como fuente de un select con muchos
+proyectos). Recomendable agregar un catálogo sin paginar si esto se vuelve
+necesario, igual que se hizo con /api/v1/fallas/crear-datos.
+
+REQUEST DE EJEMPLO:
+GET /api/v1/equipos?active=1&project_id=3&internal_code=CSM&sort_by=placa&sort_dir=asc&page=1
+
+RESPONSE 200:
+{
+  "success": true,
+  "message": "Operación exitosa",
+  "data": {
+    "data": [
+      {
+        "id": 4,
+        "uuid": null,
+        "branch_id": 1,
+        "placa": "A05AR9B",
+        "type": "Vehículo liviano",
+        "active": 1,
+        "serial_niv": "8LFUNY02XCMG06357",
+        "body_serial_number": "N/A",
+        "chassis_serial_number": "N/A",
+        "engine_serial_number": null,
+        "vehicle_model": "BT-50 2.2L 4X2 / BT-50",
+        "brand_name": "MAZDA",
+        "owner": "SERVICIOS CASMAR",
+        "model_year": "2012",
+        "internal_code": "CSM-VL-001",
+        "color": "PLATA",
+        "origin": null,
+        "racda": "2",
+        "created_at": "2025-11-07T07:39:15.000000Z",
+        "updated_at": "2026-07-29T23:44:39.000000Z",
+        "last_project": { "id": 3, "name": "Nombre del proyecto" }
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "last_page": 3,
+      "per_page": 10,
+      "total": 27
+    }
+  }
+}

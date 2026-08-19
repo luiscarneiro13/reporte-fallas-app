@@ -1,7 +1,7 @@
 export default {
   menu: {
     dashboard: 'Dashboard',
-    fault_summary: 'Open Faults',
+    fault_summary: 'Fault Summary',
     closed_faults: 'Closed Faults',
     report_fault: 'Report Fault',
     equipment: 'Equipment',
@@ -111,7 +111,7 @@ export default {
   },
   faults: {
     title: 'Faults',
-    summary_title: 'Open Faults',
+    summary_title: 'Fault Summary',
     closed_faults: 'Closed Faults',
     closed_faults_details: 'Closed Fault Details',
     report_title: 'Report Fault',
@@ -146,6 +146,12 @@ export default {
     activity_performed_by: 'Activity Performed By',
     activities_performed: 'Activities Performed on Equipment',
     equipment_maintenance_log: 'Equipment Maintenance Activities',
+    executor_internal: 'Internal Executor',
+    executor_external: 'External Executor',
+    created_ok: 'Fault reported successfully',
+    closed_ok: 'Fault closed and archived successfully',
+    updated_ok: 'Fault updated successfully',
+    required_fields: 'Please complete the required fields',
     closed_date: 'Closed Date',
     view_details: 'View Details',
     filters: 'Filters',
@@ -199,6 +205,11 @@ export default {
     yes: 'Yes',
     no: 'No',
     na: 'N/A',
+    filters: 'Filters',
+    status: 'Status',
+    all: 'All',
+    active_only: 'Active',
+    inactive_only: 'Inactive',
   },
   profile: {
     title: 'Profile',

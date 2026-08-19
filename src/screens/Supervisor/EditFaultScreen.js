@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,33 +7,40 @@ import {
   Modal,
   FlatList,
   StyleSheet,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from '../../i18n';
+import { getFaultById, getFaultCreationData, updateFault } from '../../api/faults';
 import ScreenContainer, { ScrollContent } from '../../components/ScreenContainer';
+import { toApiDate, fromApiDate } from '../../utils/dates';
+import { catalogToOptions } from '../../utils/faultCatalog';
 import { COLORS } from '../../constants/colors';
 
-const MOCK_EMPLOYEES  = [{ value: '1', label: 'Alcalá Alejandro' }, { value: '2', label: 'García María' }, { value: '3', label: 'Torres Juan' }];
-const MOCK_EQUIPMENT  = [{ value: '1', label: 'Camioneta - CSM-VL-002 - A78AS1B' }, { value: '2', label: 'Excavator CAT 320' }, { value: '3', label: 'Crane Liebherr LTM' }];
-const MOCK_AREAS      = [{ value: '1', label: 'Mecánica liviana' }, { value: '2', label: 'Hydraulics' }, { value: '3', label: 'Electrical' }];
-const MOCK_STATUSES   = [{ value: '1', label: 'En espera de repuesto' }, { value: '2', label: 'In Progress' }, { value: '3', label: 'Scheduled' }, { value: '4', label: 'Closed' }];
-const MOCK_SPARE      = [{ value: '1', label: 'Solicitado' }, { value: '2', label: 'Available' }, { value: '3', label: 'Missing' }];
+function toIntOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = parseInt(v, 10);
+  return Number.isNaN(n) ? null : n;
+}
 
-function SelectField({ label, value, onPress, required }) {
+function SelectField({ label, value, onPress, required, error }) {
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.label}>
         {label}{required && <Text style={styles.req}> *</Text>}
       </Text>
-      <TouchableOpacity style={styles.selectBox} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity style={[styles.selectBox, error && styles.inputError]} onPress={onPress} activeOpacity={0.7}>
         <Text style={[styles.selectText, !value && styles.placeholder]}>
           {value || 'Seleccione'}
         </Text>
         <Ionicons name="chevron-down-outline" size={16} color="#718096" />
       </TouchableOpacity>
+      {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 }
@@ -64,25 +71,144 @@ export default function EditFaultScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
-  const fault = route.params?.fault;
+  const queryClient = useQueryClient();
+  const faultId = route.params?.fault?.id;
 
-  const [reportedBy,     setReportedBy]     = useState(fault?.reportedBy     ? { label: fault.reportedBy }     : null);
-  const [equipment,      setEquipment]      = useState(fault?.equipment      ? { label: fault.equipment }      : null);
-  const [serviceArea,    setServiceArea]    = useState(fault?.serviceArea     ? { label: fault.serviceArea }    : null);
-  const [faultStatus,    setFaultStatus]    = useState(fault?.status          ? { label: fault.status }          : null);
-  const [sparePart,      setSparePart]      = useState(null);
-  const [description,    setDescription]    = useState(fault?.description    || '');
-  const [reportDate,     setReportDate]     = useState(fault?.date           || '');
-  const [scheduledExec,  setScheduledExec]  = useState(fault?.scheduledExecution || '');
-  const [activeModal,    setActiveModal]    = useState(null);
+  const [reportedBy,    setReportedBy]    = useState(null);
+  const [equipment,     setEquipment]     = useState(null);
+  const [serviceArea,   setServiceArea]   = useState(null);
+  const [faultStatus,   setFaultStatus]   = useState(null);
+  const [sparePartStatus, setSparePartStatus] = useState(null);
+  const [description,   setDescription]   = useState('');
+  const [reportDate,    setReportDate]    = useState('');
+  const [scheduledExec, setScheduledExec] = useState('');
+  const [activeModal,   setActiveModal]   = useState(null);
+  const [fieldErrors,   setFieldErrors]   = useState({});
+
+  const prefilled = useRef(false);
+
+  const faultQuery = useQuery({
+    queryKey: ['fault', faultId],
+    queryFn: () => getFaultById(faultId),
+    enabled: !!faultId,
+  });
+
+  const creationDataQuery = useQuery({
+    queryKey: ['faultCreationData'],
+    queryFn: getFaultCreationData,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const data = creationDataQuery.data ?? {};
+  const fault = faultQuery.data;
+
+  const employeeOptions        = catalogToOptions(data.employee_reported);
+  const equipmentOptions       = catalogToOptions(data.equipment);
+  const serviceAreaOptions     = catalogToOptions(data.service_area);
+  const faultStatusOptions     = catalogToOptions(data.fault_status);
+  const sparePartStatusOptions = catalogToOptions(data.spare_part_status);
+
+  // Precarga el formulario con los valores reales de la falla, una sola vez.
+  useEffect(() => {
+    if (prefilled.current || !fault || creationDataQuery.isLoading) return;
+
+    const findOpt = (options, id) => options.find((o) => o.value === String(id)) ?? null;
+
+    setReportedBy(findOpt(employeeOptions, fault.reported_by_id));
+    setEquipment(findOpt(equipmentOptions, fault.equipment_id));
+    setServiceArea(findOpt(serviceAreaOptions, fault.service_area_id));
+    setFaultStatus(findOpt(faultStatusOptions, fault.fault_status_id));
+    setSparePartStatus(findOpt(sparePartStatusOptions, fault.spare_part_status_id));
+    setDescription(fault.description ?? '');
+    setReportDate(fromApiDate(fault.report_date));
+    setScheduledExec(fromApiDate(fault.scheduled_execution));
+
+    prefilled.current = true;
+  }, [fault, creationDataQuery.isLoading]);
+
+  const mutation = useMutation({
+    mutationFn: (payload) => updateFault(faultId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['faults'] });
+      queryClient.invalidateQueries({ queryKey: ['fault', faultId] });
+      Alert.alert(t('common.success') || 'OK', t('faults.updated_ok') || 'Falla actualizada correctamente');
+      navigation.goBack();
+    },
+    onError: (err) => {
+      if (err?.response?.status === 422 && err.response.data?.errors) {
+        setFieldErrors(err.response.data.errors);
+        Alert.alert(t('common.error') || 'Error', err.response.data.message || 'Revise los campos marcados');
+        return;
+      }
+      const msg = err?.response?.data?.message || err?.message || 'No se pudo actualizar la falla';
+      Alert.alert(t('common.error') || 'Error', msg);
+    },
+  });
 
   const modals = {
-    reportedBy: { setter: setReportedBy, options: MOCK_EMPLOYEES },
-    equipment:  { setter: setEquipment,  options: MOCK_EQUIPMENT  },
-    serviceArea:{ setter: setServiceArea,options: MOCK_AREAS      },
-    faultStatus:{ setter: setFaultStatus,options: MOCK_STATUSES   },
-    sparePart:  { setter: setSparePart,  options: MOCK_SPARE      },
+    reportedBy:      { setter: setReportedBy,      options: employeeOptions },
+    equipment:       { setter: setEquipment,       options: equipmentOptions },
+    serviceArea:     { setter: setServiceArea,     options: serviceAreaOptions },
+    faultStatus:     { setter: setFaultStatus,     options: faultStatusOptions },
+    sparePartStatus: { setter: setSparePartStatus, options: sparePartStatusOptions },
   };
+
+  const handleSave = () => {
+    if (
+      !reportedBy || !equipment || !serviceArea || !faultStatus || !sparePartStatus || !description.trim()
+    ) {
+      Alert.alert(t('common.error') || 'Error', t('faults.required_fields') || 'Complete los campos obligatorios');
+      return;
+    }
+
+    const reportISO    = toApiDate(reportDate);
+    const scheduledISO = toApiDate(scheduledExec);
+    if (reportISO === undefined || scheduledISO === undefined) {
+      Alert.alert(t('common.error') || 'Error', 'Fecha inválida (dd-mm-yyyy)');
+      return;
+    }
+
+    setFieldErrors({});
+
+    const payload = {
+      employee_reported_id: toIntOrNull(reportedBy.value),
+      equipment_id:          toIntOrNull(equipment.value),
+      service_area_id:       toIntOrNull(serviceArea.value),
+      description:           description.trim(),
+      fault_status_id:       toIntOrNull(faultStatus.value),
+      spare_part_status_id:  toIntOrNull(sparePartStatus.value),
+      report_date:           reportISO,
+      scheduled_execution:   scheduledISO,
+    };
+
+    mutation.mutate(payload);
+  };
+
+  if (!faultId) return null;
+
+  if (faultQuery.isLoading || creationDataQuery.isLoading) {
+    return (
+      <ScreenContainer style={{ paddingTop: insets.top }}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#1E50A0" />
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (faultQuery.isError || !fault) {
+    return (
+      <ScreenContainer style={{ paddingTop: insets.top }}>
+        <View style={styles.center}>
+          <Ionicons name="warning-outline" size={48} color="#e53e3e" />
+          <Text style={styles.emptyText}>{t('common.error') || 'Error al cargar datos'}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.retryText}>{t('actions.back') || 'Volver'}</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer style={{ paddingTop: insets.top }}>
@@ -96,35 +222,44 @@ export default function EditFaultScreen() {
       </LinearGradient>
 
       <ScrollContent paddingBottom={120}>
-        <SelectField label={t('faults.reported_by')} value={reportedBy?.label} onPress={() => setActiveModal('reportedBy')} />
-        <SelectField label={t('faults.equipment')}   value={equipment?.label}  onPress={() => setActiveModal('equipment')} />
-        <SelectField label={t('faults.service_area')}value={serviceArea?.label}onPress={() => setActiveModal('serviceArea')} />
-        <SelectField label={t('faults.fault_status')}value={faultStatus?.label}onPress={() => setActiveModal('faultStatus')} />
-        <SelectField label={t('faults.spare_part_status')} value={sparePart?.label} onPress={() => setActiveModal('sparePart')} />
+        <SelectField label={t('faults.reported_by')}       value={reportedBy?.label}      onPress={() => setActiveModal('reportedBy')}      required error={fieldErrors.employee_reported_id?.[0]} />
+        <SelectField label={t('faults.equipment')}         value={equipment?.label}       onPress={() => setActiveModal('equipment')}       required error={fieldErrors.equipment_id?.[0]} />
+        <SelectField label={t('faults.service_area')}      value={serviceArea?.label}     onPress={() => setActiveModal('serviceArea')}     required error={fieldErrors.service_area_id?.[0]} />
+        <SelectField label={t('faults.fault_status')}      value={faultStatus?.label}     onPress={() => setActiveModal('faultStatus')}     required error={fieldErrors.fault_status_id?.[0]} />
+        <SelectField label={t('faults.spare_part_status')} value={sparePartStatus?.label} onPress={() => setActiveModal('sparePartStatus')} required error={fieldErrors.spare_part_status_id?.[0]} />
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>{t('faults.fault_description')}</Text>
-          <TextInput style={[styles.textInput, styles.textArea]} value={description} onChangeText={setDescription} multiline textAlignVertical="top" />
+          <Text style={styles.label}>{t('faults.fault_description')}<Text style={styles.req}> *</Text></Text>
+          <TextInput style={[styles.textInput, styles.textArea, fieldErrors.description && styles.inputError]} value={description} onChangeText={setDescription} multiline textAlignVertical="top" />
+          {fieldErrors.description?.[0] && <Text style={styles.errorText}>{fieldErrors.description[0]}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>{t('faults.report_date')}<Text style={styles.req}> *</Text></Text>
-          <TextInput style={styles.textInput} value={reportDate} onChangeText={setReportDate} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
+          <Text style={styles.label}>{t('faults.report_date')}</Text>
+          <TextInput style={[styles.textInput, fieldErrors.report_date && styles.inputError]} value={reportDate} onChangeText={setReportDate} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
+          {fieldErrors.report_date?.[0] && <Text style={styles.errorText}>{fieldErrors.report_date[0]}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>{t('faults.scheduled_execution')}</Text>
-          <TextInput style={styles.textInput} value={scheduledExec} onChangeText={setScheduledExec} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
+          <TextInput style={[styles.textInput, fieldErrors.scheduled_execution && styles.inputError]} value={scheduledExec} onChangeText={setScheduledExec} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
+          {fieldErrors.scheduled_execution?.[0] && <Text style={styles.errorText}>{fieldErrors.scheduled_execution[0]}</Text>}
         </View>
 
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.btnCancel} onPress={() => navigation.goBack()} activeOpacity={0.8}>
             <Text style={styles.btnCancelText}>{t('actions.cancel')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnSave} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.btnSave} onPress={handleSave} activeOpacity={0.85} disabled={mutation.isPending}>
             <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnGradient}>
-              <Ionicons name="save-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.btnSaveText}>{t('actions.save')}</Text>
+              {mutation.isPending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.btnSaveText}>{t('actions.save')}</Text>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -153,6 +288,8 @@ const styles = StyleSheet.create({
   selectBox:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 14 },
   selectText:  { fontSize: 15, color: '#2d3748' },
   placeholder: { color: '#718096' },
+  inputError:  { borderColor: '#e53e3e' },
+  errorText:   { fontSize: 12, color: '#e53e3e', marginTop: 4 },
   textInput:   { backgroundColor: '#fff', borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 14, fontSize: 15, color: '#2d3748' },
   textArea:    { height: 90, textAlignVertical: 'top' },
   buttonRow:   { flexDirection: 'row', gap: 12, marginTop: 8 },
@@ -166,4 +303,8 @@ const styles = StyleSheet.create({
   pickerTitle: { fontSize: 15, fontWeight: '700', color: '#1A3A6B', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   pickerRow:   { paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   pickerRowText:{ fontSize: 15, color: '#2d3748' },
+  center:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emptyText:   { fontSize: 14, color: '#a0aec0' },
+  retryBtn:    { borderWidth: 1.5, borderColor: '#1E50A0', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 },
+  retryText:   { fontSize: 14, fontWeight: '600', color: '#1E50A0' },
 });
