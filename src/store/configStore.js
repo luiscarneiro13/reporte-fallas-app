@@ -8,8 +8,8 @@ const LOCAL_URL = 'http://192.168.1.77:8000/api/v1';
 const useConfigStore = create(
   persist(
     (set, get) => ({
-      apiBaseUrl: LOCAL_URL,
-      environment: 'local',
+      apiBaseUrl: PRODUCTION_URL,
+      environment: 'production',
 
       setProduction: () => set({ apiBaseUrl: PRODUCTION_URL, environment: 'production' }),
       setLocal: () => set({ apiBaseUrl: LOCAL_URL, environment: 'local' }),
