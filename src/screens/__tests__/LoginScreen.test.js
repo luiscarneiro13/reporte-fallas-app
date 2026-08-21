@@ -45,22 +45,22 @@ describe('LoginScreen', () => {
   it('renders email and password inputs', () => {
     const { getByPlaceholderText } = renderWithProviders(<LoginScreen />);
 
-    expect(getByPlaceholderText('Email Address')).toBeTruthy();
-    expect(getByPlaceholderText('Password')).toBeTruthy();
+    expect(getByPlaceholderText('Correo Electrónico')).toBeTruthy();
+    expect(getByPlaceholderText('Contraseña')).toBeTruthy();
   });
 
   it('shows error when submitting with empty fields', async () => {
     const { getByText, findByText } = renderWithProviders(<LoginScreen />);
 
-    fireEvent.press(getByText('Sign In'));
+    fireEvent.press(getByText('Ingresar'));
 
-    const error = await findByText('Please enter your email and password.');
+    const error = await findByText('Por favor ingresa tu correo y contraseña.');
     expect(error).toBeTruthy();
   });
 
   it('updates email input value', () => {
     const { getByPlaceholderText } = renderWithProviders(<LoginScreen />);
-    const emailInput = getByPlaceholderText('Email Address');
+    const emailInput = getByPlaceholderText('Correo Electrónico');
 
     fireEvent.changeText(emailInput, 'test@example.com');
     expect(emailInput.props.value).toBe('test@example.com');
@@ -68,7 +68,7 @@ describe('LoginScreen', () => {
 
   it('updates password input value', () => {
     const { getByPlaceholderText } = renderWithProviders(<LoginScreen />);
-    const passwordInput = getByPlaceholderText('Password');
+    const passwordInput = getByPlaceholderText('Contraseña');
 
     fireEvent.changeText(passwordInput, 'secret123');
     expect(passwordInput.props.value).toBe('secret123');

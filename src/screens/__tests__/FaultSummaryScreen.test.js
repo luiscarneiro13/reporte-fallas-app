@@ -13,6 +13,7 @@ jest.mock('@react-navigation/native', () => ({
 jest.mock('../../api/faults', () => ({
   getFaults: jest.fn(),
   getFaultCreationData: jest.fn().mockResolvedValue({}),
+  getFaultFilterData: jest.fn().mockResolvedValue({}),
   getProjects: jest.fn().mockResolvedValue([]),
 }));
 
@@ -37,7 +38,9 @@ describe('FaultSummaryScreen', () => {
     cleanup();
   });
 
-  it('uses stats.total for the Todos counter instead of pagination.total', async () => {
+  // Saltados: la stats bar (badges Todos/Open/In Progress/Blocked) está comentada
+  // en FaultSummaryScreen.js desde daabe8e. Reactivar estos tests si se reactiva esa UI.
+  it.skip('uses stats.total for the Todos counter instead of pagination.total', async () => {
     getFaults.mockResolvedValue({
       data: {
         data: {
@@ -74,7 +77,7 @@ describe('FaultSummaryScreen', () => {
     queryClient.clear();
   });
 
-  it('falls back to 0 when stats fields are missing', async () => {
+  it.skip('falls back to 0 when stats fields are missing', async () => {
     getFaults.mockResolvedValue({
       data: {
         data: {

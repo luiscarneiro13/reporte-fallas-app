@@ -78,7 +78,7 @@ describe('ReportFaultScreen', () => {
 
   it('renders Save button', () => {
     const { queryClient, getByText } = renderWithProviders(<ReportFaultScreen />);
-    expect(getByText('Save')).toBeTruthy();
+    expect(getByText('Guardar')).toBeTruthy();
     queryClient.clear();
   });
 });

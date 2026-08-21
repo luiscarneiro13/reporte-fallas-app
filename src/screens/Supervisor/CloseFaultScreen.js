@@ -138,10 +138,14 @@ export default function CloseFaultScreen() {
 
   const mutation = useMutation({
     mutationFn: (payload) => updateFault(faultId, payload),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['faults'] });
       queryClient.invalidateQueries({ queryKey: ['fault', faultId] });
-      Alert.alert(t('common.success') || 'OK', t('faults.closed_ok') || 'Falla cerrada y archivada correctamente');
+      if (result?.offline) {
+        Alert.alert(t('common.saved') || 'Guardado', result.message || 'Guardado localmente');
+      } else {
+        Alert.alert(t('common.success') || 'OK', t('faults.closed_ok') || 'Falla cerrada y archivada correctamente');
+      }
       navigation.navigate('FaultSummary');
     },
     onError: (err) => {

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Casmar",
     "slug": "casmar",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.casmar.app",
-      "buildNumber": "22",
+      "buildNumber": "24",
       "associatedDomains": [
         "applinks:casmar.com"
       ]
@@ -32,7 +32,7 @@
       "permissions": [
         "POST_NOTIFICATIONS"
       ],
-      "versionCode": 21,
+      "versionCode": 23,
       "notification": {
         "icon": "./assets/smallicon.png",
         "color": "#1E50A0"
@@ -63,7 +63,8 @@
           "icon": "./assets/smallicon.png",
           "color": "#1E50A0"
         }
-      ]
+      ],
+      "./plugins/withGradleJvmArgs.js"
     ],
     "extra": {
       "eas": {

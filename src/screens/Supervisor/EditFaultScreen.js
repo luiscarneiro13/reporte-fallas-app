@@ -128,10 +128,14 @@ export default function EditFaultScreen() {
 
   const mutation = useMutation({
     mutationFn: (payload) => updateFault(faultId, payload),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['faults'] });
       queryClient.invalidateQueries({ queryKey: ['fault', faultId] });
-      Alert.alert(t('common.success') || 'OK', t('faults.updated_ok') || 'Falla actualizada correctamente');
+      if (result?.offline) {
+        Alert.alert(t('common.saved') || 'Guardado', result.message || 'Guardado localmente');
+      } else {
+        Alert.alert(t('common.success') || 'OK', t('faults.updated_ok') || 'Falla actualizada correctamente');
+      }
       navigation.goBack();
     },
     onError: (err) => {

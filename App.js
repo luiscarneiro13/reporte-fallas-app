@@ -23,7 +23,8 @@ import useAuthStore         from './src/store/authStore';
 import { hasFaultSummaryHome } from './src/utils/roles';
 import { NotificationContext } from './src/contexts/NotificationContext';
 import { setCustomNotificationHandler, registerForPushNotificationsAsync } from './src/utils/notifications';
-import { startConnectivityMonitoring, stopConnectivityMonitoring } from './src/services/networkService';
+import { startConnectivityMonitoring, stopConnectivityMonitoring, subscribeToConnectivity } from './src/services/networkService';
+import { syncAll } from './src/services/syncService';
 import { checkForUpdate } from './src/services/versionCheck';
 import ForceUpdateScreen from './src/components/ForceUpdateScreen';
 
@@ -174,11 +175,18 @@ function DeepLinkHandler() {
   const setPendingRoute = useAuthStore((s) => s.setPendingRoute);
 
   React.useEffect(() => {
-    if (token) {
-      startConnectivityMonitoring();
-    } else {
+    if (!token) {
       stopConnectivityMonitoring();
+      return;
     }
+    startConnectivityMonitoring();
+    const unsubscribe = subscribeToConnectivity((online) => {
+      if (online) syncAll();
+    });
+    return () => {
+      unsubscribe();
+      stopConnectivityMonitoring();
+    };
   }, [token]);
 
   React.useEffect(() => {

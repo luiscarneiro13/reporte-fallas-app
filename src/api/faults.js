@@ -22,8 +22,13 @@ export const getFaultFilterData = () =>
 export const getFaultById = (id) =>
   client.get(`/fallas/${id}`).then((r) => r.data?.data ?? null);
 
-export const updateFault = (id, payload) =>
-  client.put(`/fallas/${id}`, payload).then((r) => r.data);
+export const updateFault = async (id, payload) => {
+  if (!getIsOnline()) {
+    const entry = await addToQueue({ type: 'update_fault', payload: { server_id: id, ...payload } });
+    return { offline: true, localId: entry.localId, message: 'Guardado localmente. Se sincronizará cuando haya conexión.' };
+  }
+  return client.put(`/fallas/${id}`, payload).then((r) => r.data);
+};
 
 export const getProjects = () =>
   client.get('/proyectos', { params: { per_page: 200 } })
