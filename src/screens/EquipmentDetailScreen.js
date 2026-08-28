@@ -16,29 +16,14 @@ import { getEquipmentHistory } from '../api/equipment';
 import ScreenContainer, { ScrollContent } from '../components/ScreenContainer';
 import { COLORS } from '../constants/colors';
 
-const STATUS_CONFIG = {
-  'En espera de repuesto':                     { color: '#e53e3e', bg: '#FFF5F5' },
-  'En ejecución':                              { color: '#d69e2e', bg: '#FFFFF0' },
-  'En espera por Coordinación con el Cliente':  { color: '#3182ce', bg: '#EBF8FF' },
-  'Por Programación Interna':                  { color: '#805ad5', bg: '#E9D8FD' },
-};
-
-const DEFAULT_STATUS = { color: '#718096', bg: '#F7FAFC' };
-
 function FaultHistoryItem({ fault }) {
-  const cfg = STATUS_CONFIG[fault.fault_status_name] || DEFAULT_STATUS;
+  const { t } = useTranslation();
   return (
     <View style={styles.faultItem}>
-      <View style={styles.faultRow}>
-        <View style={[styles.faultDot, { backgroundColor: cfg.color }]} />
-        <View style={styles.faultContent}>
-          <Text style={styles.faultDesc} numberOfLines={2}>{fault.description}</Text>
-          <View style={styles.faultMeta}>
-            <Text style={[styles.faultStatus, { color: cfg.color }]}>{fault.fault_status_name}</Text>
-            <Text style={styles.faultDate}>{fault.report_date?.slice(0, 10)}</Text>
-          </View>
-        </View>
-      </View>
+      <Text style={styles.faultDesc} numberOfLines={2}>{fault.description}</Text>
+      <Text style={styles.faultDate}>
+        {t('faults.closed_date') || 'Fecha de cierre'}: {fault.closed_at?.slice(0, 10) || '—'}
+      </Text>
     </View>
   );
 }
@@ -196,12 +181,7 @@ const styles = StyleSheet.create({
   section: { backgroundColor: '#fff', borderRadius: 16, padding: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1A3A6B', marginBottom: 12 },
   faultItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  faultRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  faultDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5, marginRight: 10 },
-  faultContent: { flex: 1 },
   faultDesc: { fontSize: 13, color: '#2d3748', lineHeight: 18, marginBottom: 4 },
-  faultMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  faultStatus: { fontSize: 11, fontWeight: '700' },
   faultDate: { fontSize: 11, color: '#a0aec0' },
   emptyBox: { alignItems: 'center', paddingVertical: 30, gap: 8 },
   emptyText: { fontSize: 14, color: '#a0aec0' },

@@ -27,13 +27,6 @@ import { COLORS } from '../../constants/colors';
 import { catalogToOptions } from '../../utils/faultCatalog';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-const STATUS_CONFIG = {
-  'Open':        { color: '#e53e3e', bg: '#FFF5F5' },
-  'In Progress': { color: '#d69e2e', bg: '#FFFFF0' },
-  'Blocked':     { color: '#805ad5', bg: '#E9D8FD' },
-  'Closed':      { color: '#38a169', bg: '#F0FFF4' },
-};
-
 const DEFAULT_STATUS = { color: '#718096', bg: '#F7FAFC' };
 
 const ALL_OPTION = { value: '', label: 'Todos' };
@@ -66,7 +59,7 @@ function StatBadge({ count, label, color, isActive, onPress }) {
 
 function FaultCard({ fault, onPress }) {
   const { t } = useTranslation();
-  const cfg = STATUS_CONFIG[fault.status] || DEFAULT_STATUS;
+  const cfg = DEFAULT_STATUS;
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       <View style={[styles.cardAccent, { backgroundColor: cfg.color }]} />
@@ -77,20 +70,6 @@ function FaultCard({ fault, onPress }) {
         </View>
         <Text style={styles.cardEquipment} numberOfLines={1}>{fault.equipment}</Text>
         <Text style={styles.cardDesc} numberOfLines={2}>{fault.description}</Text>
-        <View style={styles.cardMeta}>
-          <View style={styles.metaItem}>
-            <Ionicons name="location-outline" size={13} color="#718096" />
-            <Text style={styles.metaText}>{fault.serviceArea}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="folder-outline" size={13} color="#718096" />
-            <Text style={styles.metaText}>{fault.project}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="person-outline" size={13} color="#718096" />
-            <Text style={styles.metaText}>{fault.reportedBy}</Text>
-          </View>
-        </View>
         <View style={styles.cardFooter}>
           <View style={styles.metaItem}>
             <Ionicons name="calendar-outline" size={13} color="#a0aec0" />
@@ -108,15 +87,45 @@ function FaultCard({ fault, onPress }) {
   );
 }
 
+function normalizeSearch(text) {
+  return String(text ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
+
 function PickerModal({ visible, title, options, onSelect, onClose }) {
+  const [search, setSearch] = useState('');
+
+  const filteredOptions = search.trim()
+    ? options.filter((item) => normalizeSearch(item.label).includes(normalizeSearch(search)))
+    : options;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.pickerOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={styles.pickerBox}>
+        <TouchableOpacity style={styles.pickerBox} activeOpacity={1} onPress={() => {}}>
           <Text style={styles.pickerTitle}>{title}</Text>
+          <View style={styles.pickerSearchWrap}>
+            <Ionicons name="search-outline" size={16} color="#718096" style={styles.pickerSearchIcon} />
+            <TextInput
+              style={styles.pickerSearchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Buscar..."
+              placeholderTextColor="#a0aec0"
+              autoCorrect={false}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={16} color="#a0aec0" />
+              </TouchableOpacity>
+            )}
+          </View>
           <FlatList
-            data={options}
+            data={filteredOptions}
             keyExtractor={(item) => item.value}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.pickerOption}
@@ -125,8 +134,11 @@ function PickerModal({ visible, title, options, onSelect, onClose }) {
                 <Text style={styles.pickerOptionText}>{item.label}</Text>
               </TouchableOpacity>
             )}
+            ListEmptyComponent={
+              <Text style={styles.pickerEmptyText}>Sin resultados</Text>
+            }
           />
-        </View>
+        </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
   );
@@ -382,7 +394,7 @@ export default function FaultSummaryScreen() {
 
       const mapped = raw.map((f) => ({
         id: f.id,
-        equipment: f.equipment_name,
+        equipment: [f.internal_code, f.placa].filter(Boolean).join(' - ') || 'Sin Código',
         description: f.description,
         status: f.fault_status_name,
         serviceArea: f.service_area_name,
@@ -640,12 +652,11 @@ const styles = StyleSheet.create({
   cardAccent: { width: 5 },
   cardBody: { flex: 1, padding: 13 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-  cardEquipment: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1A3A6B', marginRight: 8, marginTop: 4, marginBottom: 4 },
+  cardEquipment: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.primary, marginRight: 8, marginTop: 4, marginBottom: 4 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, gap: 4 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 11, fontWeight: '700' },
-  cardDesc: { fontSize: 13, color: '#4a5568', lineHeight: 18, marginBottom: 8 },
-  cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
+  cardDesc: { fontSize: 15, fontWeight: '700', color: '#2d3748', lineHeight: 20, marginBottom: 8 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaText: { fontSize: 12, color: '#718096' },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 7 },
@@ -684,8 +695,12 @@ const styles = StyleSheet.create({
 
   /* Inline picker modal */
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' },
-  pickerBox: { backgroundColor: '#fff', borderRadius: 12, width: '80%', maxHeight: 320, paddingVertical: 8 },
+  pickerBox: { backgroundColor: '#fff', borderRadius: 12, width: '85%', maxHeight: 420, paddingVertical: 8 },
   pickerTitle: { fontSize: 15, fontWeight: '700', color: '#1A3A6B', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  pickerSearchWrap: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginVertical: 8, borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 8, paddingHorizontal: 10 },
+  pickerSearchIcon: { marginRight: 6 },
+  pickerSearchInput: { flex: 1, fontSize: 14, color: '#2d3748', paddingVertical: 8 },
   pickerOption: { paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   pickerOptionText: { fontSize: 15, color: '#2d3748' },
+  pickerEmptyText: { textAlign: 'center', color: '#a0aec0', fontSize: 14, paddingVertical: 20 },
 });

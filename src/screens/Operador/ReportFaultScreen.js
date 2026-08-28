@@ -60,15 +60,45 @@ function buildReporterOption(user, employeeOptions = []) {
   return byName ?? null;
 }
 
+function normalizeSearch(text) {
+  return String(text ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
+
 function PickerModal({ visible, title, options, onSelect, onClose }) {
+  const [search, setSearch] = useState('');
+
+  const filteredOptions = search.trim()
+    ? options.filter((item) => normalizeSearch(item.label).includes(normalizeSearch(search)))
+    : options;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={styles.modalBox}>
+        <TouchableOpacity style={styles.modalBox} activeOpacity={1} onPress={() => {}}>
           <Text style={styles.modalTitle}>{title}</Text>
+          <View style={styles.modalSearchWrap}>
+            <Ionicons name="search-outline" size={16} color="#718096" style={styles.modalSearchIcon} />
+            <TextInput
+              style={styles.modalSearchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Buscar..."
+              placeholderTextColor="#a0aec0"
+              autoCorrect={false}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={16} color="#a0aec0" />
+              </TouchableOpacity>
+            )}
+          </View>
           <FlatList
-            data={options}
+            data={filteredOptions}
             keyExtractor={(item) => item.value}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.modalOption}
@@ -77,8 +107,11 @@ function PickerModal({ visible, title, options, onSelect, onClose }) {
                 <Text style={styles.modalOptionText}>{item.label}</Text>
               </TouchableOpacity>
             )}
+            ListEmptyComponent={
+              <Text style={styles.modalEmptyText}>Sin resultados</Text>
+            }
           />
-        </View>
+        </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
   );
@@ -162,7 +195,7 @@ export default function ReportFaultScreen() {
   const faultStatusOptions = catalogToOptions(data.fault_status);
   const sparePartStatusOptions = catalogToOptions(data.spare_part_status);
 
-  // Status de falla: siempre fijo en "Por Programación Interna", sin importar el rol.
+  // Status de falla: precargado en "Por Programación Interna"; solo el Operador lo tiene bloqueado.
   useEffect(() => {
     if (faultStatus || faultStatusOptions.length === 0) return;
     const fixed = faultStatusOptions.find(
@@ -278,7 +311,7 @@ export default function ReportFaultScreen() {
             value={faultStatus?.label}
             onPress={() => setActiveModal('faultStatus')}
             required
-            disabled
+            disabled={isOperator}
             error={fieldErrors.fault_status_id?.[0]}
           />
           <SelectField
@@ -480,8 +513,8 @@ const styles = StyleSheet.create({
   modalBox: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    width: '80%',
-    maxHeight: 320,
+    width: '85%',
+    maxHeight: 420,
     paddingVertical: 8,
   },
   modalTitle: {
@@ -493,6 +526,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
+  modalSearchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: '#cbd5e0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+  },
+  modalSearchIcon: {
+    marginRight: 6,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2d3748',
+    paddingVertical: 8,
+  },
   modalOption: {
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -502,5 +554,11 @@ const styles = StyleSheet.create({
   modalOptionText: {
     fontSize: 15,
     color: '#2d3748',
+  },
+  modalEmptyText: {
+    textAlign: 'center',
+    color: '#a0aec0',
+    fontSize: 14,
+    paddingVertical: 20,
   },
 });
