@@ -57,33 +57,56 @@ function StatBadge({ count, label, color, isActive, onPress }) {
   );
 }
 
-function FaultCard({ fault, onPress }) {
+function FaultRow({ fault, onPress, isLast }) {
   const { t } = useTranslation();
   const cfg = DEFAULT_STATUS;
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-      <View style={[styles.cardAccent, { backgroundColor: cfg.color }]} />
-      <View style={styles.cardBody}>
-        <View style={[styles.statusBadge, { backgroundColor: cfg.bg, alignSelf: 'flex-start' }]}>
-          <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
-          <Text style={[styles.statusText, { color: cfg.color }]}>{fault.status}</Text>
-        </View>
-        <Text style={styles.cardEquipment} numberOfLines={1}>{fault.equipment}</Text>
-        <Text style={styles.cardDesc} numberOfLines={2}>{fault.description}</Text>
-        <View style={styles.cardFooter}>
-          <View style={styles.metaItem}>
-            <Ionicons name="calendar-outline" size={13} color="#a0aec0" />
-            <Text style={styles.footerDate}>{fault.date || 'N/A'}</Text>
+    <TouchableOpacity
+      style={[styles.faultRow, isLast && styles.faultRowLast]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.rowAccent, { backgroundColor: cfg.color }]} />
+      <View style={styles.rowBody}>
+        <View style={styles.rowTopMeta}>
+          <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
+            <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
+            <Text style={[styles.statusText, { color: cfg.color }]}>{fault.status}</Text>
+          </View>
+          <View style={styles.dateBadge}>
+            <Ionicons name="calendar-outline" size={11} color="#718096" />
+            <Text style={styles.dateBadgeText}>{fault.date || 'N/A'}</Text>
           </View>
           <View style={styles.waitingBadge}>
-            <Ionicons name="time-outline" size={12} color="#e53e3e" />
+            <Ionicons name="time-outline" size={11} color="#e53e3e" />
             <Text style={styles.waitingText}>
               {fault.waitingDays ? `${fault.waitingDays}d` : (t('faults.today') || 'Hoy')}
             </Text>
           </View>
         </View>
+        <Text style={styles.rowDesc} numberOfLines={2}>{fault.description}</Text>
       </View>
+      <Ionicons name="chevron-forward-outline" size={16} color="#cbd5e0" style={styles.rowChevron} />
     </TouchableOpacity>
+  );
+}
+
+function EquipmentGroupCard({ group, onPressFault }) {
+  return (
+    <View style={styles.groupCard}>
+      <View style={styles.groupHeader}>
+        <Ionicons name="construct-outline" size={15} color={COLORS.primary} />
+        <Text style={styles.groupHeaderText} numberOfLines={1}>{group.label}</Text>
+      </View>
+      {group.faults.map((fault, idx) => (
+        <FaultRow
+          key={fault.id}
+          fault={fault}
+          isLast={idx === group.faults.length - 1}
+          onPress={() => onPressFault(fault)}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -395,6 +418,9 @@ export default function FaultSummaryScreen() {
       const mapped = raw.map((f) => ({
         id: f.id,
         equipment: [f.internal_code, f.placa].filter(Boolean).join(' - ') || 'Sin Código',
+        equipmentId: f.equipment_id,
+        equipmentName: f.equipment_name,
+        internalCode: f.internal_code,
         description: f.description,
         status: f.fault_status_name,
         serviceArea: f.service_area_name,
@@ -420,6 +446,23 @@ export default function FaultSummaryScreen() {
     () => data?.pages.flatMap((p) => p.mapped) ?? [],
     [data]
   );
+
+  const equipmentGroups = useMemo(() => {
+    const groups = [];
+    let current = null;
+    for (const f of faults) {
+      if (!current || f.equipmentId !== current.equipmentId) {
+        current = {
+          equipmentId: f.equipmentId,
+          label: `${f.internalCode ?? 'Sin código'} - ${f.equipmentName}`,
+          faults: [],
+        };
+        groups.push(current);
+      }
+      current.faults.push(f);
+    }
+    return groups;
+  }, [faults]);
 
   const filteredTotal = data?.pages[0]?.pagination?.total ?? 0;
 
@@ -571,10 +614,13 @@ export default function FaultSummaryScreen() {
         {/* Fault list */}
         {!isLoading && !isError && (
           <FlatList
-            data={faults}
-            keyExtractor={(item) => String(item.id)}
+            data={equipmentGroups}
+            keyExtractor={(item) => String(item.equipmentId)}
             renderItem={({ item }) => (
-              <FaultCard fault={item} onPress={() => navigation.navigate('FaultDetail', { fault: item })} />
+              <EquipmentGroupCard
+                group={item}
+                onPressFault={(fault) => navigation.navigate('FaultDetail', { fault })}
+              />
             )}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
@@ -647,20 +693,24 @@ const styles = StyleSheet.create({
   /* List */
   listContent: { padding: 12, paddingTop: 4, paddingBottom: 120 },
 
-  /* Fault card */
-  card: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
-  cardAccent: { width: 5 },
-  cardBody: { flex: 1, padding: 13 },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-  cardEquipment: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.primary, marginRight: 8, marginTop: 4, marginBottom: 4 },
+  /* Equipment group card */
+  groupCard: { backgroundColor: '#fff', borderRadius: 14, marginBottom: 12, overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#fff', paddingVertical: 10, paddingHorizontal: 13, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  groupHeaderText: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.primary },
+
+  /* Fault row (inside a group card) */
+  faultRow: { flexDirection: 'row', alignItems: 'stretch', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  faultRowLast: { borderBottomWidth: 0 },
+  rowAccent: { width: 5 },
+  rowBody: { flex: 1, padding: 13 },
+  rowDesc: { fontSize: 15, fontWeight: '700', color: '#2d3748', lineHeight: 20, marginTop: 8 },
+  rowChevron: { alignSelf: 'center', marginRight: 10 },
+  rowTopMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, gap: 4 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 11, fontWeight: '700' },
-  cardDesc: { fontSize: 15, fontWeight: '700', color: '#2d3748', lineHeight: 20, marginBottom: 8 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metaText: { fontSize: 12, color: '#718096' },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 7 },
-  footerDate: { fontSize: 12, color: '#a0aec0' },
+  dateBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#F7FAFC', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 20 },
+  dateBadgeText: { fontSize: 11, color: '#718096', fontWeight: '600' },
   waitingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FFF5F5', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 20 },
   waitingText: { fontSize: 11, color: '#e53e3e', fontWeight: '700' },
 
