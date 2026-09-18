@@ -24,8 +24,6 @@ import { COLORS } from '../constants/colors';
 export default function LoginScreen({ navigation }) {
   const { t, locale } = useTranslation();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const setPendingRoute = useAuthStore((s) => s.setPendingRoute);
-  const clearPendingRoute = useAuthStore((s) => s.clearPendingRoute);
   const { expoPushToken } = useContext(NotificationContext);
   const [email,        setEmail]        = useState('');
   const [password,     setPassword]     = useState('');
@@ -62,9 +60,6 @@ export default function LoginScreen({ navigation }) {
       const res = await loginRequest(email.trim(), password, locale, expoPushToken);
       const { token, user } = res.data.data;
       setAuth(token, user, user?.roles ?? []);
-
-      // El linking de React Navigation manejará la navegación automáticamente
-
     } catch (err) {
       const errorCode = err?.response?.data?.error_code;
       if (errorCode === 'OPERATOR_WITHOUT_EMPLOYEE') {
@@ -85,7 +80,7 @@ export default function LoginScreen({ navigation }) {
       end={{ x: 1, y: 1 }}
       style={styles.gradient}
     >
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}

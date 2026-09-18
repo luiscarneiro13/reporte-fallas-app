@@ -69,18 +69,4 @@ describe('authStore', () => {
     expect(state.hasRole('supervisor')).toBe(true);
     expect(state.hasRole('admin')).toBe(false);
   });
-
-  it('should set and clear pending route', () => {
-    act(() => {
-      useAuthStore.getState().setPendingRoute('Dashboard');
-    });
-
-    expect(useAuthStore.getState().pendingRoute).toBe('Dashboard');
-
-    act(() => {
-      useAuthStore.getState().clearPendingRoute();
-    });
-
-    expect(useAuthStore.getState().pendingRoute).toBeNull();
-  });
 });

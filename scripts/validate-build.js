@@ -2,45 +2,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const net = require('net');
-
-const PROD_BACKEND_HOST = 'tryironflow.com';
-const PROD_BACKEND_PORT = 443;
-const PROD_BACKEND_URL  = 'https://tryironflow.com';
-const TIMEOUT_MS = 5000;
-
-function checkTcpConnection(host, port) {
-  return new Promise((resolve, reject) => {
-    const socket = new net.Socket();
-    socket.setTimeout(TIMEOUT_MS);
-    socket.on('connect', () => { socket.destroy(); resolve(true); });
-    socket.on('timeout', () => { socket.destroy(); reject(new Error('timeout')); });
-    socket.on('error', (err) => { socket.destroy(); reject(err); });
-    socket.connect(port, host);
-  });
-}
-
-async function checkProductionBackend() {
-  const border = '═'.repeat(62);
-  process.stdout.write(`  Verificando backend de producción (${PROD_BACKEND_URL})...`);
-  try {
-    await checkTcpConnection(PROD_BACKEND_HOST, PROD_BACKEND_PORT);
-    console.log(' ✅');
-    return true;
-  } catch {
-    console.log(' ❌\n');
-    console.error(
-      `${border}\n` +
-      `  ❌  BACKEND DE PRODUCCIÓN NO DISPONIBLE\n` +
-      `${border}\n\n` +
-      `  El build requiere que el backend esté activo en:\n\n` +
-      `      ${PROD_BACKEND_URL}\n\n` +
-      `  Verifica la conectividad antes de compilar la app.\n\n` +
-      `${border}\n`
-    );
-    return false;
-  }
-}
 
 const APP_JSON_PATH = path.join(__dirname, '..', 'app.json');
 const GRADLE_PROPERTIES_PATH = path.join(__dirname, '..', 'gradle.properties');
@@ -232,13 +193,4 @@ function main() {
   }
 }
 
-async function run() {
-  console.log('🌐 Checking production backend connectivity...\n');
-  const backendOk = await checkProductionBackend();
-  if (!backendOk) {
-    process.exit(1);
-  }
-  main();
-}
-
-run();
+main();

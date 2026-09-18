@@ -2,7 +2,7 @@
   "expo": {
     "name": "Casmar",
     "slug": "casmar",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,11 +15,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.casmar.app",
-      "buildNumber": "25",
-      "associatedDomains": [
-        "applinks:casmar.com"
-      ]
+      "bundleIdentifier": "com.servicioscasmar.app",
+      "buildNumber": "1",
+      "icon": "./assets/icon-ios.png",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -32,26 +33,11 @@
       "permissions": [
         "POST_NOTIFICATIONS"
       ],
-      "versionCode": 24,
+      "versionCode": 25,
       "notification": {
         "icon": "./assets/smallicon.png",
         "color": "#1E50A0"
-      },
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": {
-            "scheme": "https",
-            "host": "casmar.com",
-            "pathPrefix": "/equipment"
-          },
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        }
-      ]
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

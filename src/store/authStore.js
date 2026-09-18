@@ -8,12 +8,8 @@ const useAuthStore = create(
       token: null,
       user:  null,
       roles: [],
-      pendingRoute: null,
-
       setAuth: (token, user, roles) => set({ token, user, roles: roles ?? [] }),
-      clearAuth: () => set({ token: null, user: null, roles: [], pendingRoute: null }),
-      setPendingRoute: (route) => set({ pendingRoute: route }),
-      clearPendingRoute: () => set({ pendingRoute: null }),
+      clearAuth: () => set({ token: null, user: null, roles: [] }),
       isAuthenticated: () => {
         const { token } = get();
         return !!token;

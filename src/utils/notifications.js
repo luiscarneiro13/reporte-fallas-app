@@ -1,7 +1,7 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 
 export function setCustomNotificationHandler() {
   Notifications.setNotificationHandler({
@@ -16,7 +16,7 @@ export function setCustomNotificationHandler() {
 }
 
 function handleRegistrationError(errorMessage) {
-  Alert.alert('Error', errorMessage);
+  console.warn('[notifications]', errorMessage);
   throw new Error(errorMessage);
 }
 

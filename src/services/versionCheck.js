@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import client from '../api/client';
 import { APP_VERSION } from '../constants';
 
@@ -15,7 +16,7 @@ function compareVersions(a, b) {
 
 export async function checkForUpdate() {
   try {
-    const res = await client.get('/app/version');
+    const res = await client.get('/app/version', { params: { platform: Platform.OS } });
     const data = res.data?.data || res.data;
 
     const latestVersion = data.latest_version;

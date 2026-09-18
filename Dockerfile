@@ -5,6 +5,10 @@
 
 FROM ghcr.io/luiscarneiro13/reactnative:v1.0.0
 
+# eas-cli viejo en la imagen base falla al autenticar con Apple
+# (iTunes service key is empty). Mantenerlo actualizado aquí.
+RUN npm install -g eas-cli@latest
+
 WORKDIR /app
 
 # Copiar archivos de definición de dependencias para caché eficiente

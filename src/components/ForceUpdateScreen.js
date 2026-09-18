@@ -2,19 +2,19 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { APP_PACKAGE_NAME, APP_VERSION } from '../constants';
+import { APP_PACKAGE_NAME, APP_STORE_ID, APP_VERSION } from '../constants';
 
 export default function ForceUpdateScreen({ updateUrl, message, force, onSkip }) {
   const storeUrl =
     updateUrl ||
     (Platform.OS === 'android'
       ? `market://details?id=${APP_PACKAGE_NAME}`
-      : `https://apps.apple.com/app/${APP_PACKAGE_NAME}`);
+      : `itms-apps://apps.apple.com/app/id${APP_STORE_ID}`);
 
   const fallbackUrl =
     Platform.OS === 'android'
       ? `https://play.google.com/store/apps/details?id=${APP_PACKAGE_NAME}`
-      : `https://apps.apple.com/app/${APP_PACKAGE_NAME}`;
+      : `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
   const handleUpdate = () => {
     Linking.openURL(storeUrl).catch(() => Linking.openURL(fallbackUrl));

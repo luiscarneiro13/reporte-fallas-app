@@ -10,7 +10,7 @@ LABEL org.opencontainers.image.title="React Native & Expo Base Image" \
       org.opencontainers.image.description="Imagen base con Node 20, Java 17 y Android SDK configurados para compilar IronFlow con EAS CLI" \
       org.opencontainers.image.authors="Luis Carneiro <carneiroluis2@gmail.com>" \
       org.opencontainers.image.version="v1.0.0" \
-      com.tryironflow.changelog="Instalación inicial de Node 20, JDK 17, herramientas del compilador, yarn, expo-cli, y eas-cli."
+      com.servicioscasmar.changelog="Instalación inicial de Node 20, JDK 17, herramientas del compilador, yarn y eas-cli."
 
 # Desactivar avisos interactivos durante la instalación de paquetes
 ENV DEBIAN_FRONTEND=noninteractive
@@ -28,14 +28,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar yarn de forma global y las herramientas de Expo / EAS CLI
-RUN npm install -g yarn expo-cli eas-cli @expo/ngrok
+# (expo-cli está deprecado — se usa `npx expo`; eas-cli siempre en última versión
+#  porque versiones viejas fallan al autenticar con Apple)
+RUN npm install -g yarn eas-cli@latest @expo/ngrok
 
 # Limpiar la caché de npm para optimizar el peso final de la imagen
 RUN npm cache clean --force
 
 # Configuración inicial de Git para evitar problemas de directorios seguros con EAS/Expo
-RUN git config --global user.name "IronFlow Developer" && \
-    git config --global user.email "dev@ironflow.com" && \
+RUN git config --global user.name "Casmar Developer" && \
+    git config --global user.email "dev@servicioscasmar.com" && \
     git config --global --add safe.directory /app
 
 WORKDIR /app

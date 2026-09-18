@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { REQUEST_TIMEOUT_MS } from '../constants';
 import useAuthStore from '../store/authStore';
 import useConfigStore from '../store/configStore';
@@ -17,6 +18,7 @@ client.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.headers['X-Platform'] = Platform.OS;
     const apiBaseUrl = useConfigStore.getState().apiBaseUrl;
     config.baseURL = apiBaseUrl;
     return config;

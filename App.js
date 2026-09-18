@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Linking, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer } from '@react-navigation/native';
@@ -100,32 +100,6 @@ function SupervisorDrawer() {
 function AppNavigator() {
   const roles = useAuthStore((s) => s.roles);
   const MainDrawer = hasFaultSummaryHome(roles) ? SupervisorDrawer : OperadorDrawer;
-  const pendingRoute = useAuthStore((s) => s.pendingRoute);
-  const clearPendingRoute = useAuthStore((s) => s.clearPendingRoute);
-
-  React.useEffect(() => {
-    if (!pendingRoute) return;
-
-    // Extraer path de cualquier formato: https://tryironflow.com/equipment/uuid o ironflow://equipment/uuid
-    let path = '';
-    try {
-      const url = new URL(pendingRoute);
-      path = url.pathname || url.host + (url.pathname || '');
-    } catch {
-      // Si falla URL parsing, intentar extraer directamente
-      path = pendingRoute.replace(/^[a-z]+:\/\//, '');
-    }
-
-    const pathParts = path.split('/').filter(Boolean);
-    if (pathParts[0] === 'equipment' && pathParts[1]) {
-      setTimeout(() => {
-        navigationRef.current?.navigate('EquipmentDetail', { equipmentId: pathParts[1] });
-        clearPendingRoute();
-      }, 300);
-    } else {
-      clearPendingRoute();
-    }
-  }, [pendingRoute, clearPendingRoute]);
 
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
@@ -140,24 +114,6 @@ function AppNavigator() {
 
 const RootStack = createNativeStackNavigator();
 
-const linking = {
-  prefixes: ['https://tryironflow.com', 'http://tryironflow.com', 'ironflow://'],
-  config: {
-    screens: {
-      App: {
-        screens: {
-          EquipmentDetail: 'equipment/:equipmentId',
-        },
-      },
-      Auth: {
-        screens: {
-          Login: 'login',
-        },
-      },
-    },
-  },
-};
-
 function RootNavigator() {
   const token = useAuthStore((s) => s.token);
   return (
@@ -170,9 +126,8 @@ function RootNavigator() {
   );
 }
 
-function DeepLinkHandler() {
+function ConnectivityHandler() {
   const token = useAuthStore((s) => s.token);
-  const setPendingRoute = useAuthStore((s) => s.setPendingRoute);
 
   React.useEffect(() => {
     if (!token) {
@@ -188,39 +143,6 @@ function DeepLinkHandler() {
       stopConnectivityMonitoring();
     };
   }, [token]);
-
-  React.useEffect(() => {
-    const handleUrl = ({ url }) => {
-      if (!url) return;
-      if (token) {
-        // Usuario logueado: navegar directamente
-        let path = '';
-        try {
-          const parsed = new URL(url);
-          path = parsed.pathname || '';
-        } catch {
-          path = url.replace(/^[a-z]+:\/\//, '');
-        }
-        const parts = path.split('/').filter(Boolean);
-        if (parts[0] === 'equipment' && parts[1]) {
-          navigationRef.current?.navigate('EquipmentDetail', { equipmentId: parts[1] });
-        }
-      } else {
-        // No logueado: guardar para después del login
-        setPendingRoute(url);
-      }
-    };
-
-    // Link recibido mientras la app está abierta
-    const subscription = Linking.addEventListener('url', handleUrl);
-
-    // Link que abrió la app (cold start)
-    Linking.getInitialURL().then((url) => {
-      if (url) handleUrl({ url });
-    });
-
-    return () => subscription.remove();
-  }, [token, setPendingRoute]);
 
   return null;
 }
@@ -291,8 +213,8 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
       <I18nProvider>
       <NotificationContext.Provider value={{ expoPushToken }}>
-      <NavigationContainer ref={navigationRef} linking={linking}>
-        <DeepLinkHandler />
+      <NavigationContainer ref={navigationRef}>
+        <ConnectivityHandler />
         <RootNavigator />
         {updateInfo?.updateRequired && !updateInfo?.force && (
           <View style={StyleSheet.absoluteFill}>

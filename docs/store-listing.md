@@ -5,10 +5,11 @@ Este documento reúne las respuestas y textos usados al configurar la ficha de l
 ## Datos generales de la app
 
 - **Nombre:** Casmar
-- **Package / Bundle ID:** `com.casmar.app`
-- **Scheme (deep link):** `casmar://`
-- **Dominio asociado:** `casmar.com` (Android App Links / iOS Universal Links sobre `/equipment`)
-- **Versión actual:** 1.0.2 (versionCode 23 / buildNumber 24)
+- **Package (Android):** `com.casmar.app`
+- **Bundle ID (iOS):** `com.servicioscasmar.app` (el id `com.casmar.app` ya estaba ocupado en Apple)
+- **Apple ID (App Store Connect):** `6813633043` — SKU: `servicios_casmar`
+- **Deep links:** desactivados por ahora (se quitaron `associatedDomains`, `intentFilters`, `linking` y `pendingRoute`; el esquema `casmar://` sigue declarado en `app.json`)
+- **Versión actual:** 1.0.4 (versionCode 25 / buildNumber 1)
 - **Roles de usuario:** Operador y Supervisor (drawers distintos, ver `App.js`)
 - **Permisos de dispositivo usados:** únicamente notificaciones push (`POST_NOTIFICATIONS` en Android). Verificado en `app.json`: no hay permisos de cámara, almacenamiento ni ubicación, y no hay `expo-image-picker`/`expo-camera`/`expo-location` en el código. (Corrección: en pasos anteriores se asumió erróneamente que había cámara/almacenamiento para fotos; no es así.)
 - **Sin anuncios:** la app no integra ningún SDK publicitario.
@@ -23,7 +24,7 @@ Este documento reúne las respuestas y textos usados al configurar la ficha de l
 
 > El acceso solo requiere correo electrónico y contraseña; no se usa verificación en 2 pasos, código QR, biometría ni acceso por ubicación. Se necesita conexión a internet para iniciar sesión (la app funciona sin conexión solo después de haberse autenticado). La cuenta de prueba tiene rol de Operador y permite ver el flujo completo: reportar una falla, ver equipos y consultar el perfil.
 
-**Credenciales de prueba:** completar con un usuario real del backend de producción (`https://tryironflow.com/api/v1`), no de un entorno local/dev.
+**Credenciales de prueba:** completar con un usuario real del backend de producción (`https://servicioscasmar.com/api/v1`), no de un entorno local/dev.
 
 **Advertencia importante:** `src/services/versionCheck.js` puede mostrar una pantalla de actualización forzosa (`ForceUpdateScreen`) si el `min_version` que devuelve el backend (`/app/version`) es mayor que la versión del build enviado a revisión. Verificar esto antes de enviar a revisión en cualquier tienda, para no bloquear al revisor.
 

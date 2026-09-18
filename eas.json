@@ -24,6 +24,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "carneiroluis2@gmail.com",
+        "ascAppId": "6813633043",
+        "appleTeamId": "C3B8X39F3H"
+      }
+    }
   }
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 
 export function ScrollContent({
   children,
@@ -26,8 +26,12 @@ export default function ScreenContainer({
   ...props
 }) {
   return (
-    <View style={[{ flex: 1, backgroundColor }, style]} {...props}>
+    <KeyboardAvoidingView
+      style={[{ flex: 1, backgroundColor }, style]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      {...props}
+    >
       {children}
-    </View>
+    </KeyboardAvoidingView>
   );
 }

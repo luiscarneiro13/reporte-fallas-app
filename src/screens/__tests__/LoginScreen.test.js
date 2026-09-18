@@ -18,17 +18,11 @@ jest.mock('../../store/authStore', () => {
   const mockStore = jest.fn((selector) => {
     const state = {
       setAuth: jest.fn(),
-      setPendingRoute: jest.fn(),
-      pendingRoute: null,
-      clearPendingRoute: jest.fn(),
     };
     return selector ? selector(state) : state;
   });
   mockStore.getState = () => ({
     setAuth: jest.fn(),
-    setPendingRoute: jest.fn(),
-    pendingRoute: null,
-    clearPendingRoute: jest.fn(),
   });
   return { __esModule: true, default: mockStore };
 });
