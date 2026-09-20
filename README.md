@@ -1,4 +1,4 @@
-# IronFlow App
+# Casmar App
 
 ## Requisitos
 
@@ -12,7 +12,7 @@
 
 ```bash
 git clone <repo>
-cd ironflow-app
+cd app-reporte-fallas
 docker compose build
 echo "EXPO_TOKEN=tu_token_aqui" > .env
 ```
@@ -80,7 +80,7 @@ Descargar e instalar. La IP de la PC se obtiene con `hostname -I` (primer valor)
 
 **4. Conectar al servidor Metro**
 
-Abrir la app **IronFlow** en el teléfono. Si no conecta automáticamente, ingresar manualmente en la pantalla de conexión:
+Abrir la app **Casmar** en el teléfono. Si no conecta automáticamente, ingresar manualmente en la pantalla de conexión:
 
 ```
 http://192.168.1.PC_IP:8081
@@ -94,7 +94,7 @@ http://192.168.1.PC_IP:8081
 docker compose up -d
 ```
 
-Abrir la app **IronFlow** en el teléfono. Metro arranca automáticamente con el contenedor.
+Abrir la app **Casmar** en el teléfono. Metro arranca automáticamente con el contenedor.
 
 **Si no conecta automáticamente**, ingresar en la pantalla de conexión:
 

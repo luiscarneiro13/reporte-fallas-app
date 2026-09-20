@@ -1,4 +1,4 @@
-# IronFlow App
+# Casmar App
 
 ## Requisitos
 
@@ -12,7 +12,7 @@
 
 ```bash
 git clone <repo>
-cd ironflow-app
+cd app-reporte-fallas
 docker compose build
 ```
 

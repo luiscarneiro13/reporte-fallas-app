@@ -52,7 +52,7 @@ Run a single test file:
 docker compose exec expo npx jest src/api/__tests__/client.test.js
 ```
 
-**Important:** `jest.global-setup.js` valida conectividad con el backend antes de correr los tests. Si el backend local no está disponible, algunos tests pueden fallar o saltarse. Usar `BUILD=true npm test` para el entorno de CI/build.
+Los archivos de setup de Jest son `jest.setup.js` y `jest.setup-after.js` (ver `jest.config.js`). Para el entorno de CI/build usar `npm run test:build` (equivale a `BUILD=true jest`).
 
 ## Build y Deploy
 
@@ -68,6 +68,14 @@ docker compose exec expo eas build --platform android --profile production   # P
 docker compose exec expo eas build --platform android --profile preview       # APK de prueba
 ```
 EAS Cloud no corre tests ni hace bump automático; hacerlo manual antes.
+
+### iOS (App Store)
+```bash
+npm run bump:patch                                                 # sube versión + buildNumber
+docker compose exec expo eas build -p ios --profile production     # responde "n" al login de Apple
+docker compose exec expo eas submit -p ios --profile production    # usa la ASC API Key, sin login
+```
+Responder **`n`** al prompt `Do you want to log in to your Apple account?` — las credenciales de firma ya están en EAS. Detalles completos y fechas de expiración en `docs/DESPLIEGUE.md`.
 
 ### Versioning
 ```bash
@@ -90,8 +98,8 @@ El rol activo se lee de `useAuthStore().roles` y determina qué drawer se monta.
 
 ### Estado global (`src/store/`)
 
-- **`authStore.js`**: fuente de verdad de `token`, `user`, `roles` y `pendingRoute` (ruta pendiente para deep links recibidos sin sesión). Persiste en AsyncStorage bajo la clave `@ironflow_auth`.
-- **`configStore.js`**: controla `apiBaseUrl` entre producción (`https://tryironflow.com/api/v1`) y local (`http://localhost:8090/api/v1`). Se puede cambiar desde `DevConfigScreen` en desarrollo.
+- **`authStore.js`**: fuente de verdad de `token`, `user` y `roles`. Persiste en AsyncStorage bajo la clave `@ironflow_auth` (clave legacy del nombre anterior del proyecto; no renombrar para no perder sesiones activas).
+- **`configStore.js`**: controla `apiBaseUrl` entre producción (`https://servicioscasmar.com/api/v1`) y local (`http://192.168.1.77:8000/api/v1`). Se puede cambiar desde `DevConfigScreen` en desarrollo.
 
 ### Cliente HTTP (`src/api/client.js`)
 
@@ -105,7 +113,7 @@ Toda llamada al backend debe pasar por funciones en `src/api/` (nunca llamar Axi
 
 - **`offlineQueue.js`**: cola persistida en AsyncStorage (`@ironflow_offline_queue`). Opera tipos `create_fault`, `update_fault`, `close_fault`.
 - **`syncService.js`**: consume la cola cuando hay conectividad. Usa `Idempotency-Key` (el `localId` local) para evitar duplicados. Los conflictos 409/422 se resuelven removiendo de la cola y notificando; los errores 5xx se reintentan.
-- **`networkService.js`**: monitorea conectividad y dispara `syncAll()` al reconectar. Se activa/desactiva según el estado de autenticación en `App.js → DeepLinkHandler`.
+- **`networkService.js`**: monitorea conectividad y dispara `syncAll()` al reconectar. Se activa/desactiva según el estado de autenticación en `App.js → ConnectivityHandler`.
 
 ### Data fetching
 
@@ -117,13 +125,13 @@ Custom i18n con soporte `en`, `es`, `pt`. Idioma guardado en AsyncStorage (`@iro
 
 ### Deep links
 
-Esquemas registrados: `ironflow://` y `https://tryironflow.com` / `http://tryironflow.com`.
+**Desactivados actualmente.** Solo queda declarado el esquema `casmar://` en `app.json`; no hay `linking` en `App.js`, ni `intentFilters` (Android) ni `associatedDomains` (iOS). Si se retoman, la configuración va en `App.js` (`linking` del `NavigationContainer`) y `app.json`.
 
-Ruta implementada: `equipment/:equipmentId` → navega a `EquipmentDetail`. Si el usuario no está autenticado, el link se guarda en `pendingRoute` y se procesa tras el login.
+Las notificaciones push sí navegan internamente: `data.url` con path `equipment/{id}` → `EquipmentDetail`, y `data.type` `fault_created`/`fault_closed` → `FaultDetail`.
 
 ### Notificaciones push (`src/utils/notifications.js`)
 
-Usa `expo-notifications`. Al recibir una notificación con `data.url`, navega a `EquipmentDetail`; con `data.type === 'fault_created'`, navega a `FaultDetail`. El token push se registra en `App.js` y se expone via `NotificationContext`.
+Usa `expo-notifications`. Al recibir una notificación con `data.url` (path `equipment/{id}`), navega a `EquipmentDetail`; con `data.type` `fault_created`/`fault_closed` y `data.fault_id`, navega a `FaultDetail`. El token push se registra en `App.js` y se expone via `NotificationContext` (`src/contexts/NotificationContext.js`).
 
 ### Version check (`src/services/versionCheck.js`)
 
