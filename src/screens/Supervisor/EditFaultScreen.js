@@ -150,25 +150,36 @@ export default function EditFaultScreen() {
   });
 
   const modals = {
-    reportedBy:      { setter: setReportedBy,      options: employeeOptions },
-    equipment:       { setter: setEquipment,       options: equipmentOptions },
-    serviceArea:     { setter: setServiceArea,     options: serviceAreaOptions },
-    faultStatus:     { setter: setFaultStatus,     options: faultStatusOptions },
-    sparePartStatus: { setter: setSparePartStatus, options: sparePartStatusOptions },
+    reportedBy:      { setter: setReportedBy,      options: employeeOptions,        errorKey: 'employee_reported_id' },
+    equipment:       { setter: setEquipment,       options: equipmentOptions,       errorKey: 'equipment_id' },
+    serviceArea:     { setter: setServiceArea,     options: serviceAreaOptions,     errorKey: 'service_area_id' },
+    faultStatus:     { setter: setFaultStatus,     options: faultStatusOptions,     errorKey: 'fault_status_id' },
+    sparePartStatus: { setter: setSparePartStatus, options: sparePartStatusOptions, errorKey: 'spare_part_status_id' },
   };
 
+  const clearFieldError = (key) =>
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+
   const handleSave = () => {
-    if (
-      !reportedBy || !equipment || !serviceArea || !faultStatus || !sparePartStatus || !description.trim()
-    ) {
-      Alert.alert(t('common.error') || 'Error', t('faults.required_fields') || 'Complete los campos obligatorios');
-      return;
-    }
+    const requiredMsg = t('common.field_required') || 'Este campo es obligatorio';
+    const errors = {};
+
+    if (!reportedBy) errors.employee_reported_id = [requiredMsg];
+    if (!equipment) errors.equipment_id = [requiredMsg];
+    if (!serviceArea) errors.service_area_id = [requiredMsg];
+    if (!faultStatus) errors.fault_status_id = [requiredMsg];
+    if (!sparePartStatus) errors.spare_part_status_id = [requiredMsg];
+    if (!description.trim()) errors.description = [requiredMsg];
 
     const reportISO    = toApiDate(reportDate);
     const scheduledISO = toApiDate(scheduledExec);
-    if (reportISO === undefined || scheduledISO === undefined) {
-      Alert.alert(t('common.error') || 'Error', 'Fecha inválida (dd-mm-yyyy)');
+    const invalidDateMsg = t('common.invalid_date') || 'Fecha inválida (dd-mm-yyyy)';
+    if (reportISO === undefined) errors.report_date = [invalidDateMsg];
+    if (scheduledISO === undefined) errors.scheduled_execution = [invalidDateMsg];
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      Alert.alert(t('common.error') || 'Error', t('faults.required_fields') || 'Complete los campos obligatorios');
       return;
     }
 
@@ -200,7 +211,7 @@ export default function EditFaultScreen() {
     );
   }
 
-  if (faultQuery.isError || !fault) {
+  if ((faultQuery.isError || !fault) && !mutation.isSuccess) {
     return (
       <ScreenContainer style={{ paddingTop: insets.top }}>
         <View style={styles.center}>
@@ -234,19 +245,19 @@ export default function EditFaultScreen() {
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>{t('faults.fault_description')}<Text style={styles.req}> *</Text></Text>
-          <TextInput style={[styles.textInput, styles.textArea, fieldErrors.description && styles.inputError]} value={description} onChangeText={setDescription} multiline textAlignVertical="top" />
+          <TextInput style={[styles.textInput, styles.textArea, fieldErrors.description && styles.inputError]} value={description} onChangeText={(v) => { setDescription(v); clearFieldError('description'); }} multiline textAlignVertical="top" />
           {fieldErrors.description?.[0] && <Text style={styles.errorText}>{fieldErrors.description[0]}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>{t('faults.report_date')}</Text>
-          <TextInput style={[styles.textInput, fieldErrors.report_date && styles.inputError]} value={reportDate} onChangeText={setReportDate} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
+          <TextInput style={[styles.textInput, fieldErrors.report_date && styles.inputError]} value={reportDate} onChangeText={(v) => { setReportDate(v); clearFieldError('report_date'); }} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
           {fieldErrors.report_date?.[0] && <Text style={styles.errorText}>{fieldErrors.report_date[0]}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>{t('faults.scheduled_execution')}</Text>
-          <TextInput style={[styles.textInput, fieldErrors.scheduled_execution && styles.inputError]} value={scheduledExec} onChangeText={setScheduledExec} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
+          <TextInput style={[styles.textInput, fieldErrors.scheduled_execution && styles.inputError]} value={scheduledExec} onChangeText={(v) => { setScheduledExec(v); clearFieldError('scheduled_execution'); }} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
           {fieldErrors.scheduled_execution?.[0] && <Text style={styles.errorText}>{fieldErrors.scheduled_execution[0]}</Text>}
         </View>
 
@@ -274,7 +285,7 @@ export default function EditFaultScreen() {
           visible
           title="Seleccione"
           options={modals[activeModal].options}
-          onSelect={(item) => modals[activeModal].setter(item)}
+          onSelect={(item) => { modals[activeModal].setter(item); clearFieldError(modals[activeModal].errorKey); }}
           onClose={() => setActiveModal(null)}
         />
       )}

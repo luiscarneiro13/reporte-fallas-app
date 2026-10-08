@@ -139,14 +139,14 @@ export default function CloseFaultScreen() {
   const mutation = useMutation({
     mutationFn: (payload) => updateFault(faultId, payload),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['faults'] });
-      queryClient.invalidateQueries({ queryKey: ['fault', faultId] });
       if (result?.offline) {
         Alert.alert(t('common.saved') || 'Guardado', result.message || 'Guardado localmente');
       } else {
         Alert.alert(t('common.success') || 'OK', t('faults.closed_ok') || 'Falla cerrada y archivada correctamente');
       }
-      navigation.navigate('FaultSummary');
+      navigation.navigate('Main', { screen: 'FaultSummary' });
+      queryClient.invalidateQueries({ queryKey: ['faults'] });
+      queryClient.invalidateQueries({ queryKey: ['fault', faultId] });
     },
     onError: (err) => {
       if (err?.response?.status === 422 && err.response.data?.errors) {
@@ -160,30 +160,45 @@ export default function CloseFaultScreen() {
   });
 
   const modals = {
-    reportedBy:       { setter: setReportedBy,       options: employeeOptions },
-    equipment:        { setter: setEquipment,        options: equipmentOptions },
-    serviceArea:      { setter: setServiceArea,      options: serviceAreaOptions },
-    faultStatus:      { setter: setFaultStatus,      options: faultStatusOptions },
-    sparePartStatus:  { setter: setSparePartStatus,  options: sparePartStatusOptions },
-    executorInternal: { setter: setExecutorInternal, options: executorInternalOptions },
-    executorExternal: { setter: setExecutorExternal, options: executorExternalOptions },
+    reportedBy:       { setter: setReportedBy,       options: employeeOptions,        errorKey: 'employee_reported_id' },
+    equipment:        { setter: setEquipment,        options: equipmentOptions,       errorKey: 'equipment_id' },
+    serviceArea:      { setter: setServiceArea,      options: serviceAreaOptions,     errorKey: 'service_area_id' },
+    faultStatus:      { setter: setFaultStatus,      options: faultStatusOptions,     errorKey: 'fault_status_id' },
+    sparePartStatus:  { setter: setSparePartStatus,  options: sparePartStatusOptions, errorKey: 'spare_part_status_id' },
+    executorInternal: { setter: setExecutorInternal, options: executorInternalOptions, errorKey: 'executor_id' },
+    executorExternal: { setter: setExecutorExternal, options: executorExternalOptions, errorKey: 'executor_external_id' },
   };
 
+  const clearFieldError = (key) =>
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+
   const handleClose = () => {
-    if (
-      !reportedBy || !equipment || !serviceArea || !faultStatus || !sparePartStatus ||
-      !description.trim() || !maintenanceLog.trim()
-    ) {
-      Alert.alert(t('common.error') || 'Error', t('faults.required_fields') || 'Complete los campos obligatorios');
-      return;
-    }
+    const requiredMsg = t('common.field_required') || 'Este campo es obligatorio';
+    const invalidDateMsg = t('common.invalid_date') || 'Fecha inválida (dd-mm-yyyy)';
+    const errors = {};
+
+    if (!reportedBy) errors.employee_reported_id = [requiredMsg];
+    if (!equipment) errors.equipment_id = [requiredMsg];
+    if (!serviceArea) errors.service_area_id = [requiredMsg];
+    if (!faultStatus) errors.fault_status_id = [requiredMsg];
+    if (!sparePartStatus) errors.spare_part_status_id = [requiredMsg];
+    if (!description.trim()) errors.description = [requiredMsg];
+    if (!maintenanceLog.trim()) errors.equipment_maintenance_log = [requiredMsg];
 
     const reportISO      = toApiDate(reportDate);
     const scheduledISO   = toApiDate(scheduledExec);
     const completedISO   = toApiDate(completedExec);
-    if (reportISO === undefined || scheduledISO === undefined || completedISO === undefined
-        || !reportISO || !scheduledISO || !completedISO) {
-      Alert.alert(t('common.error') || 'Error', 'Fechas inválidas o incompletas (dd-mm-yyyy)');
+    const dateError = (iso) => (iso === undefined ? invalidDateMsg : !iso ? requiredMsg : null);
+    const reportDateError = dateError(reportISO);
+    const scheduledError  = dateError(scheduledISO);
+    const completedError  = dateError(completedISO);
+    if (reportDateError) errors.report_date = [reportDateError];
+    if (scheduledError)  errors.scheduled_execution = [scheduledError];
+    if (completedError)  errors.completed_execution = [completedError];
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      Alert.alert(t('common.error') || 'Error', t('faults.required_fields') || 'Complete los campos obligatorios');
       return;
     }
 
@@ -220,7 +235,7 @@ export default function CloseFaultScreen() {
     );
   }
 
-  if (faultQuery.isError || !fault) {
+  if ((faultQuery.isError || !fault) && !mutation.isSuccess) {
     return (
       <ScreenContainer style={{ paddingTop: insets.top }}>
         <View style={styles.center}>
@@ -255,25 +270,25 @@ export default function CloseFaultScreen() {
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>{t('faults.fault_description')}<Text style={styles.req}> *</Text></Text>
-          <TextInput style={[styles.textInput, styles.textArea, fieldErrors.description && styles.inputError]} value={description} onChangeText={setDescription} multiline textAlignVertical="top" />
+          <TextInput style={[styles.textInput, styles.textArea, fieldErrors.description && styles.inputError]} value={description} onChangeText={(v) => { setDescription(v); clearFieldError('description'); }} multiline textAlignVertical="top" />
           {fieldErrors.description?.[0] && <Text style={styles.errorText}>{fieldErrors.description[0]}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>{t('faults.report_date')}<Text style={styles.req}> *</Text></Text>
-          <TextInput style={[styles.textInput, fieldErrors.report_date && styles.inputError]} value={reportDate} onChangeText={setReportDate} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
+          <TextInput style={[styles.textInput, fieldErrors.report_date && styles.inputError]} value={reportDate} onChangeText={(v) => { setReportDate(v); clearFieldError('report_date'); }} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
           {fieldErrors.report_date?.[0] && <Text style={styles.errorText}>{fieldErrors.report_date[0]}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>{t('faults.scheduled_execution')}<Text style={styles.req}> *</Text></Text>
-          <TextInput style={[styles.textInput, fieldErrors.scheduled_execution && styles.inputError]} value={scheduledExec} onChangeText={setScheduledExec} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
+          <TextInput style={[styles.textInput, fieldErrors.scheduled_execution && styles.inputError]} value={scheduledExec} onChangeText={(v) => { setScheduledExec(v); clearFieldError('scheduled_execution'); }} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
           {fieldErrors.scheduled_execution?.[0] && <Text style={styles.errorText}>{fieldErrors.scheduled_execution[0]}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>{t('faults.completed_execution')}<Text style={styles.req}> *</Text></Text>
-          <TextInput style={[styles.textInput, fieldErrors.completed_execution && styles.inputError]} value={completedExec} onChangeText={setCompletedExec} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
+          <TextInput style={[styles.textInput, fieldErrors.completed_execution && styles.inputError]} value={completedExec} onChangeText={(v) => { setCompletedExec(v); clearFieldError('completed_execution'); }} placeholder="dd-mm-yyyy" placeholderTextColor="#a0aec0" />
           {fieldErrors.completed_execution?.[0] && <Text style={styles.errorText}>{fieldErrors.completed_execution[0]}</Text>}
         </View>
 
@@ -282,7 +297,7 @@ export default function CloseFaultScreen() {
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>{t('faults.activities_performed')}<Text style={styles.req}> *</Text></Text>
-          <TextInput style={[styles.textInput, styles.textArea, fieldErrors.equipment_maintenance_log && styles.inputError]} value={maintenanceLog} onChangeText={setMaintenanceLog} multiline textAlignVertical="top" />
+          <TextInput style={[styles.textInput, styles.textArea, fieldErrors.equipment_maintenance_log && styles.inputError]} value={maintenanceLog} onChangeText={(v) => { setMaintenanceLog(v); clearFieldError('equipment_maintenance_log'); }} multiline textAlignVertical="top" />
           {fieldErrors.equipment_maintenance_log?.[0] && <Text style={styles.errorText}>{fieldErrors.equipment_maintenance_log[0]}</Text>}
         </View>
 
@@ -310,7 +325,7 @@ export default function CloseFaultScreen() {
           visible
           title="Seleccione"
           options={modals[activeModal].options}
-          onSelect={(item) => modals[activeModal].setter(item)}
+          onSelect={(item) => { modals[activeModal].setter(item); clearFieldError(modals[activeModal].errorKey); }}
           onClose={() => setActiveModal(null)}
         />
       )}

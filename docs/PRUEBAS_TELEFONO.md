@@ -6,7 +6,7 @@ Para probar funcionalidades que no corren en Expo Go (push notifications, deep l
 
 > El `EXPO_TOKEN` se configura en el archivo `.env` en la raíz del proyecto (ver [Despliegue](DESPLIEGUE.md)), así no necesitas hacer `eas login` cada vez.
 
-Esta build usa el paquete **`com.tryironflow.app.dev`** (nombre visible **"Tryironflow (Dev)"**), distinto del de producción (`com.tryironflow.app` / "Tryironflow"), configurado en `app.config.js` vía la variable de entorno `APP_VARIANT` que fija cada perfil en `eas.json`. Por eso conviven instaladas en el mismo teléfono sin pisarse, y cada una tiene su propia sesión y almacenamiento local. Las notificaciones push también funcionan en la build de desarrollo: `google-services.json` tiene un registro Firebase independiente para `com.tryironflow.app.dev`.
+> ⚠️ **Mismo paquete que producción.** No existe `app.config.js` ni variantes por `APP_VARIANT`: todas las builds (development, preview y production) usan la configuración de `app.json`, es decir el paquete **`com.casmar.app`** y el nombre **"Casmar"**. Por eso la APK de desarrollo **no puede convivir** con la app instalada desde Play Store (la firma es distinta y Android rechaza la instalación). **Desinstala primero la app de producción** y, al terminar las pruebas, vuelve a instalarla desde Play Store.
 
 ---
 
@@ -48,17 +48,19 @@ docker compose -f docker-compose-build.yml build expo
 
 ```bash
 # Compilar la APK localmente (todo en una sola línea)
-docker compose -f docker-compose-build.yml run --rm expo sh -c "npm install && eas build --platform android --profile development --local"
+docker compose -f docker-compose-build.yml run --rm -v "$(pwd)/..:/output" expo sh -c "npm install && eas build --platform android --profile development --local --output /output/casmar-dev.apk"
 ```
+
+> La APK queda **un directorio arriba del proyecto** (`../casmar-dev.apk`): se monta la carpeta padre en `/output` y `--output` le indica a EAS dónde escribirla. El archivo queda con dueño `root`; si necesitas moverla o borrarla: `sudo chown $USER ../casmar-dev.apk`.
 
 > ⚠️ El comando debe copiarse y ejecutarse **completo en una sola línea**. Si lo cortas y ejecutas solo la primera parte, el contenedor arranca el servidor de desarrollo con QR en lugar de compilar.
 
 - `--local` indica que el build corre en tu máquina, no en EAS Cloud
 - Tarda entre 15 y 30 minutos según los recursos de tu PC (necesita al menos 8 GB de RAM y 15 GB de disco)
-- Al terminar, la terminal muestra la ruta exacta donde quedó la APK (generalmente en la raíz del proyecto)
+- Al terminar, la APK queda en `../casmar-dev.apk` (la carpeta que contiene este proyecto)
 - **No necesitas descargar nada** — la APK ya está en tu PC, pasa directamente al Paso 4
 
-> Solo necesitas repetir el Paso 2 cuando cambies algo nativo (agregar un plugin, modificar `app.config.js`, instalar una librería con código nativo). Para cambios de código JavaScript no hace falta recompilar.
+> Solo necesitas repetir el Paso 2 cuando cambies algo nativo (agregar un plugin, modificar `app.json`, instalar una librería con código nativo). Para cambios de código JavaScript no hace falta recompilar.
 
 ---
 
@@ -81,7 +83,7 @@ Descarga ese archivo `.apk` desde el enlace, directamente en el teléfono (abrie
 2. En el teléfono ve a **Ajustes → Seguridad** (o **Ajustes → Aplicaciones → Instalar apps desconocidas** según el fabricante)
 3. Activa **"Permitir instalar apps de fuentes desconocidas"** para el navegador o gestor de archivos que uses para abrir el APK
 4. Abre el archivo `.apk` y toca **Instalar**
-5. La app queda instalada como **"Tryironflow (Dev)"**, con su propio ícono, separada de "Tryironflow" (producción)
+5. La app queda instalada como **"Casmar"** (si falla con "conflicto de paquete", desinstala antes la versión de Play Store)
 
 ---
 
@@ -113,7 +115,7 @@ Deja esta terminal abierta mientras uses la app.
 
 ### Paso 7 — Abrir la app y conectarla al servidor
 
-1. Abre la app **"Tryironflow (Dev)"** en el teléfono
+1. Abre la app **"Casmar"** en el teléfono
 2. Verás la pantalla del **Expo Dev Client** con un campo para ingresar la URL del servidor
 3. Dos opciones:
    - **Rápida:** toca **"Scan QR code"** y escanea el QR de la terminal
@@ -141,9 +143,33 @@ docker compose up -d
 docker compose exec expo eas build --platform android --profile preview
 ```
 
-- El perfil `preview` genera un APK autónomo (también con package `.dev`) que no necesita Metro corriendo
+- El perfil `preview` genera un APK autónomo (release, paquete `com.casmar.app`) que no necesita Metro corriendo
 - Descárgalo e instálalo siguiendo los pasos 3 y 4 de la Opción A
 - **Desventaja:** cada cambio de código requiere esperar otro build de 10–20 minutos
+- Es la opción recomendada para probar la apertura desde notificaciones con la app cerrada (en builds debug de Android, Expo tiene problemas conocidos al lanzar la app desde una notificación)
+
+Build local equivalente (APK en la carpeta padre del proyecto):
+
+```bash
+docker compose -f docker-compose-build.yml run --rm -v "$(pwd)/..:/output" expo sh -c "npm install && eas build --platform android --profile preview --local --output /output/casmar-preview.apk"
+```
+
+---
+
+## Probar notificaciones push
+
+Las notificaciones **no funcionan en Expo Go** (en Expo Go la app omite el registro del token y los listeners, ver `isExpoGo` en `src/utils/notifications.js`). Usa una APK (Opción A u Opción B).
+
+1. Inicia sesión con un usuario **Admin, Supervisor o Coordinador**: son los únicos destinatarios de las notificaciones de su sucursal (`PushNotificationService` en el backend). Acepta el permiso de notificaciones.
+2. Con **otro usuario** de la misma sucursal, reporta o cierra una falla.
+3. Comportamiento esperado al tocar la notificación:
+
+| Evento | Destino |
+|--------|---------|
+| `fault_created` | Detalle de la falla (`FaultDetail`, se carga por `fault_id` con `GET /fallas/{id}`) |
+| `fault_closed` | Historial del equipo (`EquipmentDetail`): la falla cerrada se archiva en `fault_history` y ya no existe en `/fallas` |
+
+4. Prueba los tres estados de la app: abierta, en segundo plano y **cerrada por completo** (en este último caso debe abrir el destino directamente, no el inicio).
 
 ---
 
@@ -152,6 +178,7 @@ docker compose exec expo eas build --platform android --profile preview
 | Propósito | Comando |
 |-----------|---------|
 | APK de desarrollo (con hot reload) | `docker compose exec expo eas build --platform android --profile development` |
+| APK de desarrollo (build local, sale en `../casmar-dev.apk`) | `docker compose -f docker-compose-build.yml run --rm -v "$(pwd)/..:/output" expo sh -c "npm install && eas build --platform android --profile development --local --output /output/casmar-dev.apk"` |
 | APK standalone para testing | `docker compose exec expo eas build --platform android --profile preview` |
 | AAB para Google Play | `docker compose exec expo eas build --platform android --profile production` |
 | Ver todos los builds | `docker compose exec expo eas build:list` |

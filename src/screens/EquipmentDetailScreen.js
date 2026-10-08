@@ -20,7 +20,7 @@ function FaultHistoryItem({ fault }) {
   const { t } = useTranslation();
   return (
     <View style={styles.faultItem}>
-      <Text style={styles.faultDesc} numberOfLines={2}>{fault.description}</Text>
+      <Text style={styles.faultDesc} numberOfLines={2}>{fault.equipment_maintenance_log || '—'}</Text>
       <Text style={styles.faultDate}>
         {t('faults.closed_date') || 'Fecha de cierre'}: {fault.closed_at?.slice(0, 10) || '—'}
       </Text>
@@ -49,7 +49,7 @@ export default function EquipmentDetailScreen() {
     if (!equipment) return;
     navigation.navigate('Main', {
       screen: 'ReportFault',
-      params: { equipmentId: String(equipment.id) },
+      params: { equipmentId: String(equipment.id), prefillAt: Date.now() },
     });
   };
 

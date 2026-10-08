@@ -2,7 +2,9 @@
 
 Expo Go es la app genérica de Expo (Play Store / App Store). Sirve para probar la UI y la lógica JavaScript **sin compilar ni instalar nada nativo** — ideal para revisar cambios rápido. A cambio, **no soporta código nativo personalizado**: los plugins de `app.json` (ícono/color de `expo-notifications`, `google-services.json`, el scheme `casmar://`, deep links, etc.) no se aplican dentro de Expo Go. Para probar esas funcionalidades hace falta el development build (ver [PRUEBAS_TELEFONO.md](PRUEBAS_TELEFONO.md)).
 
-> Requisito: la app **Expo Go** instalada en el teléfono debe soportar el SDK del proyecto (`expo` `~54.x` en `package.json`). Si Expo Go muestra un error de versión incompatible, actualiza la app desde la tienda.
+> Requisito: la app **Expo Go** instalada en el teléfono debe soportar el SDK del proyecto (`expo` `^57.x` en `package.json`). Si Expo Go muestra un error de versión incompatible, actualiza la app desde la tienda.
+
+> **Notificaciones push:** Expo Go en Android (SDK 53+) no incluye push remoto. Para que la app no falle al arrancar, cuando detecta Expo Go (`isExpoGo` en `src/utils/notifications.js`) omite el registro del token y los listeners de notificaciones. Todo lo demás (reportar fallas, resumen, historial de equipos) se puede probar normalmente; las notificaciones solo con APK (ver [PRUEBAS_TELEFONO.md](PRUEBAS_TELEFONO.md#probar-notificaciones-push)).
 
 ---
 
@@ -56,6 +58,14 @@ docker compose up -d
 ---
 
 ## Solución de problemas
+
+### `Port 8081 is being used by another process`
+
+El servicio `expo` de `docker-compose.yml` sigue corriendo. Puedes aceptar el puerto 8082 (la URL en Expo Go será `exp://<IP>:8082`) o detenerlo antes con `docker compose stop expo` (Paso 1).
+
+### `error while loading shared libraries: libatk-1.0.so.0` (React Native DevTools)
+
+Es solo el depurador de escritorio, que no puede abrirse dentro del contenedor (no hay entorno gráfico). Se puede ignorar: no afecta a Metro ni a Expo Go.
 
 ### Error: `Conflict. The container name "/casmar-expo-go" is already in use`
 

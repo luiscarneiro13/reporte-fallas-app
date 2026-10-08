@@ -25,14 +25,14 @@ echo "EXPO_TOKEN=tu_token_aqui" > .env
 
 El más rápido. No requiere compilar nada, solo tener Expo Go instalado en el teléfono.
 
-> **Limitación:** módulos nativos como `expo-notifications` no funcionan en Expo Go.
+> **Limitación:** las notificaciones push no funcionan en Expo Go (la app las desactiva automáticamente ahí). Para probarlas usa una APK — ver [docs/PRUEBAS_TELEFONO.md](docs/PRUEBAS_TELEFONO.md).
 
 ```bash
-docker compose up -d
-docker compose exec expo npx expo start --host lan --clear
+docker compose stop expo
+docker compose run --rm --name casmar-expo-go expo sh -c "npx expo start --go --host lan --clear"
 ```
 
-Escanear el QR con Expo Go. Los cambios en `src/` se reflejan al guardar.
+Escanear el QR con Expo Go. Los cambios en `src/` se reflejan al guardar. El flag `--go` es obligatorio (detalles en [docs/expo-go.md](docs/expo-go.md)).
 
 ---
 
@@ -162,6 +162,16 @@ docker compose exec expo eas build --platform android --profile preview
 # Development client
 docker compose exec expo eas build --platform android --profile development
 ```
+
+### APK de desarrollo con build local
+
+El APK queda un directorio arriba del proyecto (`../casmar-dev.apk`):
+
+```bash
+docker compose -f docker-compose-build.yml run --rm -v "$(pwd)/..:/output" expo sh -c "npm install && eas build --platform android --profile development --local --output /output/casmar-dev.apk"
+```
+
+> Todas las builds usan el paquete de producción `com.casmar.app`: desinstala la app de Play Store antes de instalar un APK de prueba.
 
 > EAS Cloud no corre tests ni hace bump automático. Antes de un build de producción:
 > ```bash

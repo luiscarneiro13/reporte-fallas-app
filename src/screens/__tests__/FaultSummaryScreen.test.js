@@ -1,12 +1,13 @@
 import React from 'react';
-import { render, waitFor, cleanup } from '@testing-library/react-native';
+import { render, waitFor, cleanup, fireEvent } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import FaultSummaryScreen from '../Operador/FaultSummaryScreen';
 import { I18nProvider } from '../../i18n';
 import { getFaults } from '../../api/faults';
 
+const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ dispatch: jest.fn(), navigate: jest.fn() }),
+  useNavigation: () => ({ dispatch: jest.fn(), navigate: mockNavigate }),
   DrawerActions: { toggleDrawer: jest.fn() },
 }));
 
@@ -101,6 +102,32 @@ describe('FaultSummaryScreen', () => {
 
     expect(getAllByText('0').length).toBeGreaterThanOrEqual(4);
     expect(getByText(/5\s+records/i)).toBeTruthy();
+    queryClient.clear();
+  });
+
+  it('navigates to ReportFault prefilled with the group equipment', async () => {
+    getFaults.mockResolvedValue({
+      data: {
+        data: {
+          data: [{
+            id: 1,
+            equipment_id: 7,
+            internal_code: 'EQ-7',
+            equipment_name: 'Grua',
+            description: 'Fuga de aceite',
+            fault_status_name: 'Abierta',
+          }],
+          pagination: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
+          stats: {},
+        },
+      },
+    });
+
+    const { findByLabelText, queryClient } = renderWithProviders(<FaultSummaryScreen />);
+
+    fireEvent.press(await findByLabelText(/report/i));
+
+    expect(mockNavigate).toHaveBeenCalledWith('ReportFault', expect.objectContaining({ equipmentId: '7' }));
     queryClient.clear();
   });
 });

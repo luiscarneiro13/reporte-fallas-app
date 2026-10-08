@@ -86,13 +86,6 @@ function validateAppJson() {
     logError(`Invalid iOS bundle identifier format: ${iosBundleId}`);
   }
 
-  // Check if newArchEnabled is true
-  if (appJson.expo?.newArchEnabled !== true) {
-    logError('newArchEnabled must be true in app.json');
-  } else {
-    logSuccess('newArchEnabled is true');
-  }
-
   return errors.length === 0;
 }
 

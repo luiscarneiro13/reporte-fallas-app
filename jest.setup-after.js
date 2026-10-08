@@ -62,6 +62,8 @@ jest.mock('expo-notifications', () => {
     getExpoPushTokenAsync: jest.fn(() => Promise.resolve({ data: 'test-expo-token' })),
     setNotificationChannelAsync: jest.fn(() => Promise.resolve()),
     addNotificationResponseReceivedListener: jest.fn(() => mockSub),
+    getLastNotificationResponse: jest.fn(() => null),
+    clearLastNotificationResponse: jest.fn(),
     AndroidImportance: { MAX: 5 },
   };
 });

@@ -7,7 +7,7 @@ export function getTodayString() {
 
 // dd-mm-yyyy (UI) -> YYYY-MM-DD (API). Returns null for empty, undefined for invalid.
 export function toApiDate(value) {
-  if (!value) return null;
+  if (!value || !String(value).trim()) return null;
   const m = String(value).trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
   if (!m) return undefined;
   const [, dd, mm, yyyy] = m;

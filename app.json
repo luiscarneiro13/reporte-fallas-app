@@ -2,21 +2,15 @@
   "expo": {
     "name": "Casmar",
     "slug": "casmar",
-    "version": "1.0.4",
+    "version": "1.0.6",
     "orientation": "default",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-ios.png",
     "userInterfaceStyle": "light",
     "scheme": "casmar",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.servicioscasmar.app",
-      "buildNumber": "1",
+      "buildNumber": "4",
       "icon": "./assets/icon-ios.png",
       "config": {
         "usesNonExemptEncryption": false
@@ -27,17 +21,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.casmar.app",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "POST_NOTIFICATIONS"
       ],
-      "versionCode": 25,
-      "notification": {
-        "icon": "./assets/smallicon.png",
-        "color": "#1E50A0"
-      }
+      "versionCode": 27
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -50,7 +39,26 @@
           "color": "#1E50A0"
         }
       ],
-      "./plugins/withGradleJvmArgs.js"
+      "./plugins/withGradleJvmArgs.js",
+      "@react-native-community/datetimepicker",
+      "expo-status-bar",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

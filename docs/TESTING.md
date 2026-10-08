@@ -30,7 +30,12 @@ docker compose exec expo npx jest src/api/__tests__/client.test.js
 docker compose exec expo npm run test:build   # BUILD=true jest
 ```
 
-> `jest.global-setup.js` valida conectividad con el backend antes de correr los tests. Si el backend local no está disponible, algunos tests pueden fallar o saltarse. Usa `BUILD=true` en el entorno de CI/build para evitar ese chequeo.
+> Los tests no requieren backend: el cliente HTTP y las APIs nativas (`expo-notifications`, `expo-device`, `expo-constants`, AsyncStorage, etc.) están mockeados en `jest.setup-after.js`. Si usas una API nueva de `expo-notifications`, agrégala a ese mock.
+
+## Ubicación de los tests
+
+- `src/api/__tests__/`, `src/services/__tests__/`, `src/store/__tests__/`, `src/screens/__tests__/`
+- `src/utils/__tests__/notifications.test.js`: resolución del destino al tocar una notificación (`getNotificationTarget`)
 
 ## Validar configuración de build antes de generar AAB
 
@@ -38,10 +43,9 @@ docker compose exec expo npm run test:build   # BUILD=true jest
 docker compose exec expo npm run validate:build
 ```
 
-Este script valida (contra la variante resuelta por `APP_VARIANT`, `production` por defecto):
-- Campos obligatorios en `app.config.js` (nombre, slug, versión, `bundleIdentifier`, `package`, `projectId`, etc.)
+Este script (`scripts/validate-build.js`) valida:
+- Campos obligatorios en `app.json` (nombre, slug, versión, `bundleIdentifier`, `package`, `versionCode`, `projectId`, etc.)
 - Configuración de `gradle.properties`
 - Existencia de assets (íconos, splash)
 - Dependencias críticas
-- Consistencia de versión entre `app.config.js` y `package.json`
-- Conectividad con el backend de producción (`tryironflow.com`)
+- Consistencia de versión entre `app.json` y `package.json`

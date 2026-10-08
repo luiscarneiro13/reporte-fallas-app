@@ -4,12 +4,16 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from '../../i18n';
+import { getFaultById } from '../../api/faults';
+import { mapFault } from '../../utils/faultMapper';
 import useAuthStore from '../../store/authStore';
 import ScreenContainer, { ScrollContent } from '../../components/ScreenContainer';
 import { COLORS } from '../../constants/colors';
@@ -49,11 +53,39 @@ export default function FaultDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
-  const fault = route.params?.fault;
+  const paramFault = route.params?.fault;
+  const faultId = route.params?.faultId;
   const roles = useAuthStore((s) => s.roles);
   const isOperator = roles.includes('Operador');
 
-  if (!fault) return null;
+  const faultQuery = useQuery({
+    queryKey: ['faultDetail', faultId],
+    queryFn: () => getFaultById(faultId),
+    enabled: !paramFault && !!faultId,
+    select: (raw) => (raw ? mapFault(raw) : null),
+    retry: false,
+  });
+
+  const fault = paramFault ?? faultQuery.data;
+
+  if (!fault) {
+    if (faultQuery.isLoading) {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#1E50A0" />
+        </View>
+      );
+    }
+    return (
+      <View style={styles.center}>
+        <Ionicons name="warning-outline" size={48} color="#e53e3e" />
+        <Text style={styles.emptyText}>{t('faults.not_found') || 'La falla no existe o ya fue cerrada'}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.retryText}>{t('actions.back') || 'Volver'}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const cfg = STATUS_CONFIG[fault.status] || STATUS_CONFIG['Open'];
 
@@ -118,6 +150,22 @@ export default function FaultDetailScreen() {
         </Section>
 
         {/* Action buttons */}
+        {!!fault.equipmentId && (
+          <TouchableOpacity
+            style={styles.btnReportFault}
+            onPress={() => navigation.navigate('Main', {
+              screen: 'ReportFault',
+              params: { equipmentId: String(fault.equipmentId), prefillAt: Date.now() },
+            })}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={['#e53e3e', '#c53030']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnGradient}>
+              <Ionicons name="flag-outline" size={17} color="#fff" style={{ marginRight: 5 }} />
+              <Text style={styles.btnGradientText}>{t('faults.report_another') || 'Reportar otra falla'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.btnBack}
@@ -204,6 +252,12 @@ const styles = StyleSheet.create({
   btnBackText:   { fontSize: 14, fontWeight: '600', color: '#1E50A0' },
   btnEdit:       { flex: 1, borderRadius: 10, overflow: 'hidden' },
   btnCloseFault: { borderRadius: 10, overflow: 'hidden', marginBottom: 4 },
+  btnReportFault: { borderRadius: 10, overflow: 'hidden', marginTop: 4, marginBottom: 10 },
   btnGradient:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 16 },
   btnGradientText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
+  emptyText: { fontSize: 14, color: '#a0aec0', textAlign: 'center' },
+  retryBtn: { borderWidth: 1.5, borderColor: '#1E50A0', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 },
+  retryText: { fontSize: 14, fontWeight: '600', color: '#1E50A0' },
 });

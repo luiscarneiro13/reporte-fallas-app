@@ -25,7 +25,6 @@ Todos los servicios usan `network_mode: host`. No hay mapeo de puertos — Metro
 
 ```yaml
 NODE_ENV: development
-APP_VARIANT: development   # o production, según el servicio/perfil
 EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
 CHOKIDAR_USEPOLLING: "true"
 CHOKIDAR_INTERVAL: "1000"
@@ -36,20 +35,25 @@ FAST_REFRESH: "true"
 
 Necesarias para que el file watching funcione dentro del contenedor en Linux (los eventos inotify no siempre atraviesan el bind mount).
 
-## APP_VARIANT y variantes de la app
+## Variantes de la app
 
-`app.config.js` lee `process.env.APP_VARIANT` para decidir nombre y `applicationId`/`bundleIdentifier`:
+No hay `app.config.js` ni variable `APP_VARIANT`: todas las builds (development, preview, production) toman la configuración de `app.json`:
 
-| APP_VARIANT | Nombre | Android package | iOS bundle id |
-|---|---|---|---|
-| `development` (o no seteado en local) | Tryironflow (Dev) | `com.tryironflow.app.dev` | `com.tryironflow.app.dev` |
-| `production` | Tryironflow | `com.tryironflow.app` | `com.tryironflow.app` |
+| Nombre | Android package | iOS bundle id |
+|---|---|---|
+| Casmar | `com.casmar.app` | `com.servicioscasmar.app` |
 
-Se fija en dos lugares:
-- **Docker**: `environment.APP_VARIANT` en cada servicio de los `docker-compose*.yml`
-- **EAS**: `env.APP_VARIANT` en cada perfil de `eas.json`
+Consecuencia: un APK de desarrollo/prueba **no convive** con la app instalada desde Play Store; hay que desinstalar la de producción antes de instalarlo.
 
-Ambos deben coincidir con el uso esperado (compilar producción con `APP_VARIANT=production`, todo lo demás con `development`).
+## Builds locales con salida fuera del proyecto
+
+`eas build --local --output <ruta>` escribe el artefacto en una ruta del contenedor. Para dejarlo un directorio arriba del proyecto se monta la carpeta padre:
+
+```bash
+docker compose -f docker-compose-build.yml run --rm -v "$(pwd)/..:/output" expo sh -c "npm install && eas build --platform android --profile development --local --output /output/casmar-dev.apk"
+```
+
+El archivo queda con dueño `root` (`sudo chown $USER ../casmar-dev.apk` para manipularlo).
 
 ## Named volume para node_modules
 

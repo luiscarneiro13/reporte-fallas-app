@@ -25,6 +25,7 @@ import { syncAll } from '../../services/syncService';
 import { getQueue } from '../../services/offlineQueue';
 import { COLORS } from '../../constants/colors';
 import { catalogToOptions } from '../../utils/faultCatalog';
+import { mapFault } from '../../utils/faultMapper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const DEFAULT_STATUS = { color: '#718096', bg: '#F7FAFC' };
@@ -91,12 +92,24 @@ function FaultRow({ fault, onPress, isLast }) {
   );
 }
 
-function EquipmentGroupCard({ group, onPressFault }) {
+function EquipmentGroupCard({ group, onPressFault, onReportFault }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.groupCard}>
       <View style={styles.groupHeader}>
         <Ionicons name="construct-outline" size={15} color={COLORS.primary} />
         <Text style={styles.groupHeaderText} numberOfLines={1}>{group.label}</Text>
+        <TouchableOpacity
+          style={styles.groupReportBtn}
+          onPress={onReportFault}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={t('faults.report_additional') || 'Reportar falla adicional'}
+        >
+          <Ionicons name="add-circle-outline" size={16} color="#e53e3e" />
+          <Text style={styles.groupReportText}>{t('menu.report_fault') || 'Reportar Falla'}</Text>
+        </TouchableOpacity>
       </View>
       {group.faults.map((fault, idx) => (
         <FaultRow
@@ -415,22 +428,7 @@ export default function FaultSummaryScreen() {
       const res = await getFaults({ pageParam, filters: buildParams(activeFilters) });
       const raw = res.data.data.data;
 
-      const mapped = raw.map((f) => ({
-        id: f.id,
-        equipment: [f.internal_code, f.placa].filter(Boolean).join(' - ') || 'Sin Código',
-        equipmentId: f.equipment_id,
-        equipmentName: f.equipment_name,
-        internalCode: f.internal_code,
-        description: f.description,
-        status: f.fault_status_name,
-        serviceArea: f.service_area_name,
-        project: f.project_name,
-        reportedBy: f.reported_by_name,
-        date: f.report_date,
-        waitingDays: f.duration_days,
-        sparePartStatus: f.spare_part_status_name,
-        division: f.division_name,
-      }));
+      const mapped = raw.map(mapFault);
       const pagination = res.data.data.pagination;
       const stats = res.data.data.stats || null;
       return { mapped, pagination, stats };
@@ -620,6 +618,10 @@ export default function FaultSummaryScreen() {
               <EquipmentGroupCard
                 group={item}
                 onPressFault={(fault) => navigation.navigate('FaultDetail', { fault })}
+                onReportFault={() => navigation.navigate('ReportFault', {
+                  equipmentId: String(item.equipmentId),
+                  prefillAt: Date.now(),
+                })}
               />
             )}
             contentContainerStyle={styles.listContent}
@@ -697,6 +699,8 @@ const styles = StyleSheet.create({
   groupCard: { backgroundColor: '#fff', borderRadius: 14, marginBottom: 12, overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
   groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#fff', paddingVertical: 10, paddingHorizontal: 13, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   groupHeaderText: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.primary },
+  groupReportBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FFF5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  groupReportText: { fontSize: 11, fontWeight: '700', color: '#e53e3e' },
 
   /* Fault row (inside a group card) */
   faultRow: { flexDirection: 'row', alignItems: 'stretch', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },

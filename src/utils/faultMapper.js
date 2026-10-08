@@ -1,0 +1,16 @@
+export const mapFault = (f) => ({
+  id: f.id,
+  equipment: [f.internal_code, f.placa].filter(Boolean).join(' - ') || 'Sin Código',
+  equipmentId: f.equipment_id,
+  equipmentName: f.equipment_name,
+  internalCode: f.internal_code,
+  description: f.description,
+  status: f.fault_status_name,
+  serviceArea: f.service_area_name,
+  project: f.project_name,
+  reportedBy: f.reported_by_name,
+  date: f.report_date,
+  waitingDays: f.duration_days,
+  sparePartStatus: f.spare_part_status_name,
+  division: f.division_name,
+});

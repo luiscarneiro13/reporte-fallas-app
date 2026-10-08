@@ -124,6 +124,7 @@ export default function ReportFaultScreen() {
   const insets = useSafeAreaInsets();
 
   const prefillEquipmentId = route.params?.equipmentId;
+  const prefillAt = route.params?.prefillAt;
   const user = useAuthStore((s) => s.user);
   const roles = useAuthStore((s) => s.roles);
   const isOperator = roles.includes('Operador');
@@ -150,9 +151,9 @@ export default function ReportFaultScreen() {
 
   const data = creationDataQuery.data ?? {};
 
-  const resetForm = () => {
+  const resetForm = ({ keepEquipment = false } = {}) => {
     setReportedBy(null);
-    setEquipment(null);
+    if (!keepEquipment) setEquipment(null);
     setServiceArea(null);
     setFaultStatus(null);
     setSparePartStatus(null);
@@ -167,13 +168,28 @@ export default function ReportFaultScreen() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['faults'] });
       queryClient.invalidateQueries({ queryKey: ['faultCreationData'] });
-      if (result?.offline) {
-        Alert.alert(t('common.saved') || 'Guardado', result.message || 'Guardado localmente');
-      } else {
-        Alert.alert(t('common.success') || 'OK', t('faults.created_ok') || 'Falla reportada correctamente');
-      }
-      resetForm();
-      navigation.navigate('FaultSummary');
+      const [title, message] = result?.offline
+        ? [t('common.saved') || 'Guardado', result.message || 'Guardado localmente']
+        : [t('common.success') || 'OK', t('faults.created_ok') || 'Falla reportada correctamente'];
+      Alert.alert(
+        title,
+        message,
+        [
+          {
+            text: t('faults.report_another_same_equipment') || 'Reportar otra falla a este equipo',
+            onPress: () => resetForm({ keepEquipment: true }),
+          },
+          {
+            text: t('faults.go_to_summary') || 'Ir al resumen',
+            onPress: () => {
+              resetForm();
+              navigation.setParams({ equipmentId: undefined, prefillAt: undefined });
+              navigation.navigate('FaultSummary');
+            },
+          },
+        ],
+        { cancelable: false }
+      );
     },
     onError: (err) => {
       if (err?.response?.status === 422 && err.response.data?.errors) {
@@ -219,34 +235,47 @@ export default function ReportFaultScreen() {
   }, [creationDataQuery.isLoading, data.default_employee_reported_id, isOperator, reportedBy]);
 
   useEffect(() => {
-    if (prefillEquipmentId && equipmentOptions.length > 0 && !equipment) {
+    if (prefillEquipmentId && equipmentOptions.length > 0) {
       const prefill = equipmentOptions.find((opt) => opt.value === String(prefillEquipmentId));
-      if (prefill) setEquipment(prefill);
+      if (prefill) {
+        setEquipment(prefill);
+        clearFieldError('equipment_id');
+      }
     }
-  }, [prefillEquipmentId, equipmentOptions.length]);
+  }, [prefillEquipmentId, prefillAt, equipmentOptions.length]);
 
   const modals = {
-    reportedBy:       { setter: setReportedBy,       options: employeeOptions,        loading: creationDataQuery.isLoading },
-    equipment:        { setter: setEquipment,        options: equipmentOptions,       loading: creationDataQuery.isLoading },
-    serviceArea:      { setter: setServiceArea,      options: serviceAreaOptions,     loading: creationDataQuery.isLoading },
-    faultStatus:      { setter: setFaultStatus,      options: faultStatusOptions,     loading: creationDataQuery.isLoading },
-    sparePartStatus:  { setter: setSparePartStatus,  options: sparePartStatusOptions, loading: creationDataQuery.isLoading },
+    reportedBy:       { setter: setReportedBy,       options: employeeOptions,        loading: creationDataQuery.isLoading, errorKey: 'employee_reported_id' },
+    equipment:        { setter: setEquipment,        options: equipmentOptions,       loading: creationDataQuery.isLoading, errorKey: 'equipment_id' },
+    serviceArea:      { setter: setServiceArea,      options: serviceAreaOptions,     loading: creationDataQuery.isLoading, errorKey: 'service_area_id' },
+    faultStatus:      { setter: setFaultStatus,      options: faultStatusOptions,     loading: creationDataQuery.isLoading, errorKey: 'fault_status_id' },
+    sparePartStatus:  { setter: setSparePartStatus,  options: sparePartStatusOptions, loading: creationDataQuery.isLoading, errorKey: 'spare_part_status_id' },
   };
+
+  const clearFieldError = (key) =>
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
 
   const handleSave = () => {
     const sparePartRequired = !isOperator;
-    if (
-      !reportedBy || !equipment || !serviceArea || !faultStatus || !description.trim() ||
-      (sparePartRequired && !sparePartStatus)
-    ) {
-      Alert.alert(t('common.error') || 'Error', t('faults.required_fields') || 'Complete los campos obligatorios');
-      return;
-    }
+    const requiredMsg = t('common.field_required') || 'Este campo es obligatorio';
+    const errors = {};
+
+    if (!reportedBy) errors.employee_reported_id = [requiredMsg];
+    if (!equipment) errors.equipment_id = [requiredMsg];
+    if (!serviceArea) errors.service_area_id = [requiredMsg];
+    if (!faultStatus) errors.fault_status_id = [requiredMsg];
+    if (sparePartRequired && !sparePartStatus) errors.spare_part_status_id = [requiredMsg];
+    if (!description.trim()) errors.description = [requiredMsg];
 
     const reportISO = toApiDate(reportDate);
     const scheduledISO = toApiDate(scheduledExecution);
-    if (reportISO === undefined || scheduledISO === undefined) {
-      Alert.alert(t('common.error') || 'Error', 'Fecha inválida (dd-mm-yyyy)');
+    const invalidDateMsg = t('common.invalid_date') || 'Fecha inválida (dd-mm-yyyy)';
+    if (reportISO === undefined) errors.report_date = [invalidDateMsg];
+    if (scheduledISO === undefined) errors.scheduled_execution = [invalidDateMsg];
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      Alert.alert(t('common.error') || 'Error', t('faults.required_fields') || 'Complete los campos obligatorios');
       return;
     }
 
@@ -331,7 +360,7 @@ export default function ReportFaultScreen() {
             <TextInput
               style={[styles.textInput, styles.textArea, fieldErrors.description && styles.inputError]}
               value={description}
-              onChangeText={setDescription}
+              onChangeText={(v) => { setDescription(v); clearFieldError('description'); }}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
@@ -347,7 +376,7 @@ export default function ReportFaultScreen() {
             <TextInput
               style={[styles.textInput, fieldErrors.report_date && styles.inputError]}
               value={reportDate}
-              onChangeText={setReportDate}
+              onChangeText={(v) => { setReportDate(v); clearFieldError('report_date'); }}
               placeholder="dd-mm-yyyy"
               placeholderTextColor="#a0aec0"
             />
@@ -360,7 +389,7 @@ export default function ReportFaultScreen() {
             <TextInput
               style={[styles.textInput, fieldErrors.scheduled_execution && styles.inputError]}
               value={scheduledExecution}
-              onChangeText={setScheduledExecution}
+              onChangeText={(v) => { setScheduledExecution(v); clearFieldError('scheduled_execution'); }}
               placeholder="dd-mm-yyyy"
               placeholderTextColor="#a0aec0"
             />
@@ -398,7 +427,7 @@ export default function ReportFaultScreen() {
             visible
             title="Seleccione"
             options={modals[activeModal].options}
-            onSelect={(item) => modals[activeModal].setter(item)}
+            onSelect={(item) => { modals[activeModal].setter(item); clearFieldError(modals[activeModal].errorKey); }}
             onClose={() => setActiveModal(null)}
           />
         )}

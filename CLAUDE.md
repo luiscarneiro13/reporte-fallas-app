@@ -127,11 +127,28 @@ Custom i18n con soporte `en`, `es`, `pt`. Idioma guardado en AsyncStorage (`@iro
 
 **Desactivados actualmente.** Solo queda declarado el esquema `casmar://` en `app.json`; no hay `linking` en `App.js`, ni `intentFilters` (Android) ni `associatedDomains` (iOS). Si se retoman, la configuración va en `App.js` (`linking` del `NavigationContainer`) y `app.json`.
 
-Las notificaciones push sí navegan internamente: `data.url` con path `equipment/{id}` → `EquipmentDetail`, y `data.type` `fault_created`/`fault_closed` → `FaultDetail`.
+Las notificaciones push sí navegan internamente (ver sección siguiente).
 
 ### Notificaciones push (`src/utils/notifications.js`)
 
-Usa `expo-notifications`. Al recibir una notificación con `data.url` (path `equipment/{id}`), navega a `EquipmentDetail`; con `data.type` `fault_created`/`fault_closed` y `data.fault_id`, navega a `FaultDetail`. El token push se registra en `App.js` y se expone via `NotificationContext` (`src/contexts/NotificationContext.js`).
+Usa `expo-notifications`. El destino al tocar una notificación lo resuelve `getNotificationTarget(data)`:
+- `data.type === 'fault_created'` + `data.fault_id` → `FaultDetail` con `{ faultId }` (la pantalla carga la falla con `getFaultById`). Tiene prioridad sobre `data.url`, que el backend siempre envía.
+- En otro caso, `data.url` con path `equipment/{id}` → `EquipmentDetail`. Aplica a `fault_closed`: al cerrar, la falla se mueve a `fault_history` y se borra de `/fallas`, así que no se puede abrir por id.
+
+`App.js` no navega directo: guarda el destino como pendiente y lo ejecuta (`flushPendingNavigation`) cuando el `NavigationContainer` está listo y el stack `App` montado (sesión hidratada), vía `onReady`/`onStateChange`. En arranque en frío lee `Notifications.getLastNotificationResponse()` y luego la limpia; deduplica por `request.identifier`.
+
+En Expo Go (`isExpoGo`) se omiten el registro del token y los listeners, porque Expo Go Android no soporta push remoto. El token push se registra en `App.js` y se expone via `NotificationContext` (`src/contexts/NotificationContext.js`).
+
+### Flujos de reporte de fallas
+
+- `ReportFault` acepta `{ equipmentId, prefillAt }`; `prefillAt` (timestamp) fuerza a recargar el equipo aunque la pantalla ya esté montada en el drawer. Lo usan `EquipmentDetail` y el botón "Reportar Falla" de cada grupo de equipo en `FaultSummary`.
+- Tras guardar, una alerta ofrece "Reportar otra falla a este equipo" (resetea el formulario conservando el equipo) o "Ir al resumen".
+- El historial de `EquipmentDetail` muestra `equipment_maintenance_log` (trabajo realizado al cerrar), no la descripción de la falla.
+- `src/utils/faultMapper.js` (`mapFault`) normaliza filas de `v_faults_base` para `FaultSummary` y `FaultDetail`.
+
+### Variantes de build
+
+No hay `app.config.js` ni `APP_VARIANT`: todas las builds usan `app.json` (paquete `com.casmar.app`). Un APK de prueba no convive con la app de Play Store. Build local con salida en la carpeta padre: ver `docs/PRUEBAS_TELEFONO.md`.
 
 ### Version check (`src/services/versionCheck.js`)
 

@@ -13,6 +13,8 @@ Este documento reúne las respuestas y textos usados al configurar la ficha de l
 - **Roles de usuario:** Operador y Supervisor (drawers distintos, ver `App.js`)
 - **Permisos de dispositivo usados:** únicamente notificaciones push (`POST_NOTIFICATIONS` en Android). Verificado en `app.json`: no hay permisos de cámara, almacenamiento ni ubicación, y no hay `expo-image-picker`/`expo-camera`/`expo-location` en el código. (Corrección: en pasos anteriores se asumió erróneamente que había cámara/almacenamiento para fotos; no es así.)
 - **Sin anuncios:** la app no integra ningún SDK publicitario.
+- **URL de soporte (App Store Connect):** `https://servicioscasmar.com/sitioweb-v2` — landing pública con sección "Contáctanos" (`#contacto`): teléfonos y correos (`servicioscasmar@gmail.com / info@servicioscasmar.com`). `https://servicioscasmar.com` redirige a esa página. Es campo obligatorio en cada localización (es/en/pt usan la misma).
+- **URL de política de privacidad (App Store Connect):** `https://servicioscasmar.com/privacidad`
 
 ## 1. Detalles de acceso (App access)
 

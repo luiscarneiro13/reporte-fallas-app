@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -22,7 +22,7 @@ import DevConfigScreen      from './src/screens/DevConfigScreen';
 import useAuthStore         from './src/store/authStore';
 import { hasFaultSummaryHome } from './src/utils/roles';
 import { NotificationContext } from './src/contexts/NotificationContext';
-import { setCustomNotificationHandler, registerForPushNotificationsAsync } from './src/utils/notifications';
+import { setCustomNotificationHandler, registerForPushNotificationsAsync, getNotificationTarget, isExpoGo } from './src/utils/notifications';
 import { startConnectivityMonitoring, stopConnectivityMonitoring, subscribeToConnectivity } from './src/services/networkService';
 import { syncAll } from './src/services/syncService';
 import { checkForUpdate } from './src/services/versionCheck';
@@ -152,6 +152,7 @@ export default function App() {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [expoPushToken, setExpoPushToken] = useState('');
   const notificationListener = useRef(null);
+  const pendingNavigationRef = useRef(null);
 
   useEffect(() => {
     if (token) {
@@ -167,28 +168,37 @@ export default function App() {
       .catch(() => setExpoPushToken(''));
   }, []);
 
+  // La navegación se difiere hasta que el NavigationContainer esté listo y el
+  // stack "App" montado (sesión hidratada); si no, en arranque en frío se
+  // perdía y la app quedaba en la pantalla de inicio.
+  const flushPendingNavigation = useCallback(() => {
+    const target = pendingNavigationRef.current;
+    const nav = navigationRef.current;
+    if (!target || !nav?.isReady() || !nav.getRootState()?.routeNames?.includes('App')) return;
+    pendingNavigationRef.current = null;
+    nav.navigate('App', { screen: target.name, params: target.params });
+  }, []);
+
   useEffect(() => {
-    notificationListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response?.notification?.request?.content?.data;
-      if (data?.url) {
-        let path = '';
-        try {
-          const parsed = new URL(data.url);
-          path = parsed.pathname || '';
-        } catch {
-          path = data.url.replace(/^[a-z]+:\/\//, '');
-        }
-        const parts = path.split('/').filter(Boolean);
-        if (parts[0] === 'equipment' && parts[1]) {
-          navigationRef.current?.navigate('EquipmentDetail', { equipmentId: parts[1] });
-        }
-      } else if (
-        (data?.type === 'fault_created' || data?.type === 'fault_closed') &&
-        data?.fault_id
-      ) {
-        navigationRef.current?.navigate('FaultDetail', { faultId: data.fault_id });
-      }
-    });
+    if (isExpoGo) return undefined;
+    let lastHandledId = null;
+    const handleResponse = (response) => {
+      const request = response?.notification?.request;
+      if (request?.identifier && request.identifier === lastHandledId) return;
+      lastHandledId = request?.identifier ?? null;
+      const target = getNotificationTarget(request?.content?.data);
+      if (!target) return;
+      pendingNavigationRef.current = target;
+      flushPendingNavigation();
+    };
+
+    const initialResponse = Notifications.getLastNotificationResponse();
+    if (initialResponse) {
+      handleResponse(initialResponse);
+      Notifications.clearLastNotificationResponse();
+    }
+
+    notificationListener.current = Notifications.addNotificationResponseReceivedListener(handleResponse);
     return () => {
       if (notificationListener.current) {
         notificationListener.current.remove();
@@ -213,7 +223,11 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
       <I18nProvider>
       <NotificationContext.Provider value={{ expoPushToken }}>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer
+        ref={navigationRef}
+        onReady={flushPendingNavigation}
+        onStateChange={flushPendingNavigation}
+      >
         <ConnectivityHandler />
         <RootNavigator />
         {updateInfo?.updateRequired && !updateInfo?.force && (
